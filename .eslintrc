@@ -20,6 +20,23 @@
     "plugins": ["react", "react-hooks", "prettier", "jsx-a11y", "simple-import-sort"],
     "extends": ["airbnb", "airbnb/hooks", "plugin:jsx-a11y/recommended", "prettier"],
     "rules": {
+        "no-nested-ternary": 0,
+        "no-alert": 0,
+        "jsx-a11y/label-has-associated-control": 0,
+        "react/no-array-index-key": 0,
+        "react/no-unescaped-entities": 0,
+        "jsx-a11y/anchor-is-valid": 0,
+        "react/button-has-type": [
+            "error",
+            {
+                "button": true,
+                "submit": true,
+                "reset": true
+            }
+        ],
+        "camelcase": 0,
+        "no-underscore-dangle": 0,
+        "no-param-reassign": 0,
         "react/jsx-props-no-spreading": 0,
         "react/prefer-stateless-function": 0,
         "class-methods-use-this": 0,
@@ -52,9 +69,9 @@
             "version": "detect"
         },
         "import/resolver": {
-        "node": {
-            "extensions": [".js", ".jsx", ".ts", ".tsx"]
+            "node": {
+                "extensions": [".js", ".jsx", ".ts", ".tsx"]
+            }
         }
-    }
     }
 }
