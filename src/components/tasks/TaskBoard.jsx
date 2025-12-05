@@ -1,17 +1,24 @@
 // src/pages/Tasks/TaskBoard.jsx
 
 import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react'; // useMemo import করা হলো
+import { useMemo, useState } from 'react';
 
-import { TASK_STATUSES } from '../../utils/constants';
+// আপনার অন্যান্য কম্পোনেন্ট ইম্পোর্ট
 import Button from '../common/Button';
-import CommentSection from './CommentSection'; // CommentSection কম্পোনেন্ট import করা হলো (FR-14)
+import CommentSection from './CommentSection';
 import TaskCard from './TaskCard';
-import TaskFilterSort from './TaskFilterSortBar'; // TaskFilterSort কম্পোনেন্ট import করা হলো
+import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
+// ধরে নেওয়া হলো এই ফাইলগুলি utils/constants.js এ সংজ্ঞায়িত:
+const TASK_STATUSES = [
+    { label: 'To Do', value: 'to_do', color: 'text-gray-700' },
+    { label: 'In Progress', value: 'in_progress', color: 'text-blue-700' },
+    { label: 'Blocked', value: 'blocked', color: 'text-red-700' },
+    { label: 'Done', value: 'done', color: 'text-green-700' }
+];
+
 // --- MOCK DATA ---
-// Mock Task Data Structure (using 'value' from constants)
 const initialTasks = [
     {
         id: 1,
@@ -69,28 +76,19 @@ const initialTasks = [
         status: 'to_do'
     }
 ];
-// Mock Project Members (UserManagementPage থেকে নেওয়া)
 const mockProjectMembers = [
     { id: 1, name: 'Alice Smith' },
     { id: 2, name: 'Bob Johnson' },
     { id: 3, name: 'Eve Adams' }
 ];
+const PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 // --- END MOCK DATA ---
-
-// Helper for Priority Sorting (for FR-15)
-const PRIORITY_ORDER = {
-    critical: 4,
-    high: 3,
-    medium: 2,
-    low: 1
-};
 
 function TaskBoard() {
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState(null);
 
-    // 1. ✅ Filter/Sort State যোগ করা হলো (FR-15)
     const [filters, setFilters] = useState({
         priority: null,
         assigneeId: null,
@@ -99,7 +97,6 @@ function TaskBoard() {
         sortOrder: 'asc'
     });
 
-    // 2. ✅ Comment Section State যোগ করা হলো (FR-14)
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [taskForComments, setTaskForComments] = useState(null);
 
@@ -108,28 +105,24 @@ function TaskBoard() {
         setTasks((prevTasks) =>
             prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatusValue } : t))
         );
-        // NOTE: Real app would trigger Notification System (FR-13, FR-16) here
     };
 
     // নতুন টাস্ক তৈরি বা এডিট করা ডেটা সেভ করার ফাংশন (FR-10)
     const handleSaveTask = (taskData, isEditing) => {
-        // Assignee name find
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
             'Unassigned';
 
         if (isEditing) {
-            // Edit Logic
             setTasks((prevTasks) =>
                 prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData, assignee } : t))
             );
         } else {
-            // Create Logic (Mock ID generation)
             const newId = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) + 1 : 1;
             const newTask = {
                 ...taskData,
                 id: newId,
-                projectId: 1, // Default project for now (Should be dynamic)
+                projectId: 1,
                 status: 'to_do',
                 assignee
             };
@@ -139,23 +132,23 @@ function TaskBoard() {
         setTaskToEdit(null);
     };
 
-    // Edit Modal ওপেন করার ফাংশন (FR-14 - Task Edit)
+    // Edit Modal ওপেন করার ফাংশন
     const handleEditTask = (task) => {
         setTaskToEdit(task);
         setIsModalOpen(true);
     };
 
-    // ✅ Comment Handler (FR-14)
+    // Comment Handler
     const handleOpenComments = (task) => {
         setTaskForComments(task);
         setIsCommentsOpen(true);
     };
 
-    // 3. ✅ Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো (FR-15)
+    // Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো (FR-15)
     const filteredAndSortedTasks = useMemo(() => {
         let filtered = tasks;
 
-        // 3.1 Filtering Logic
+        // Filtering Logic
         if (filters.priority) {
             filtered = filtered.filter((t) => t.priority === filters.priority);
         }
@@ -171,7 +164,7 @@ function TaskBoard() {
             );
         }
 
-        // 3.2 Sorting Logic
+        // Sorting Logic
         return filtered.sort((a, b) => {
             let comparison = 0;
             const sortOrderMultiplier = filters.sortOrder === 'desc' ? -1 : 1;
@@ -181,7 +174,6 @@ function TaskBoard() {
             } else if (filters.sortBy === 'title') {
                 comparison = a.title.localeCompare(b.title);
             } else if (filters.sortBy === 'priority') {
-                // Custom Priority sorting logic
                 comparison = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
             }
 
@@ -189,13 +181,15 @@ function TaskBoard() {
         });
     }, [tasks, filters]);
 
-    // Filtered and Sorted list থেকে স্ট্যাটাস অনুযায়ী টাস্কগুলো ফিল্টার করা
     const getTasksByStatus = (statusValue) =>
         filteredAndSortedTasks.filter((t) => t.status === statusValue);
 
     return (
-        <div className="p-6 h-full flex flex-col">
-            <div className="flex justify-between items-center border-b pb-4 mb-4 flex-shrink-0">
+        // ✅ ফিক্স ১: `flex-grow` নিশ্চিত করে এটি প্যারেন্ট কন্টেইনারের পুরো উপলব্ধ প্রস্থ ব্যবহার করবে।
+        // `overflow-x-hidden` কোনো অবাঞ্ছিত ওভারফ্লো আটকায়।
+        <div className="py-6 flex-grow flex flex-col overflow-x-hidden">
+            {/* Header: px-6 */}
+            <div className="flex justify-between items-center border-b px-6 pb-4 mb-4 flex-shrink-0">
                 <h1 className="text-3xl font-bold text-gray-800">Task Board (Kanban)</h1>
                 <Button
                     variant="primary"
@@ -211,22 +205,26 @@ function TaskBoard() {
                 </Button>
             </div>
 
-            {/* 4. ✅ TaskFilterSort কম্পোনেন্ট ইন্টিগ্রেট করা হলো (FR-15) */}
-            <div className="mb-6 flex-shrink-0">
+            {/* Filter Bar: px-6 */}
+            <div className="mb-6 flex-shrink-0 px-6">
                 <TaskFilterSort
                     filters={filters}
                     setFilters={setFilters}
-                    assignees={mockProjectMembers} // Assignees list পাস করা হলো
+                    assignees={mockProjectMembers}
                 />
             </div>
 
-            {/* Kanban Board Layout (FR-15 - Filtering/Sorting) */}
-            <div className="flex flex-grow overflow-x-auto pb-4 -mx-2">
+            {/* ✅ চূড়ান্ত ফিক্স ২: Kanban Board Layout (Responsive)
+                - এই কন্টেইনারে কোনো স্ক্রল ক্লাস নেই।
+            */}
+            <div className="flex flex-col space-y-4 pb-4 lg:flex-row lg:space-y-0 lg:space-x-2 lg:flex-grow lg:flex-nowrap">
                 {TASK_STATUSES.map((statusObject) => (
                     <div
                         key={statusObject.value}
-                        className="flex-shrink-0 w-80 mx-2 bg-gray-100 rounded-xl shadow-md border border-gray-200 overflow-y-auto transition duration-300 hover:shadow-lg"
-                        style={{ height: 'calc(100vh - 230px)' }} // Adjusted height for FilterSort bar
+                        // ✅ চূড়ান্ত ফিক্স ৩: `lg:min-w-72` সরিয়ে দেওয়া হয়েছে।
+                        // কলামগুলি এখন `flex-1` দ্বারা সমানভাবে তাদের প্যারেন্ট কন্টেইনারের প্রস্থ ভাগ করে নেবে,
+                        // ফলে তারা প্যারেন্টের মধ্যে ফিট হয়ে যাবে এবং ওভারফ্লো হবে না।
+                        className="w-full lg:flex-1 lg:flex-shrink bg-gray-100 rounded-xl shadow-md border border-gray-200 overflow-y-auto transition duration-300 hover:shadow-lg"
                     >
                         {/* Column Header (Sticky) */}
                         <div className="sticky top-0 bg-gray-100 p-4 border-b border-gray-300 z-10 rounded-t-xl">
@@ -248,7 +246,7 @@ function TaskBoard() {
                                     task={task}
                                     onEdit={handleEditTask}
                                     onStatusChange={handleStatusChange}
-                                    onCommentClick={handleOpenComments} // ✅ নতুন প্রপ
+                                    onCommentClick={handleOpenComments}
                                 />
                             ))}
                             {getTasksByStatus(statusObject.value).length === 0 && (
@@ -274,7 +272,7 @@ function TaskBoard() {
                 />
             )}
 
-            {/* 5. ✅ Comment Section Component ইন্টিগ্রেট করা হলো (FR-14) */}
+            {/* Comment Section Component */}
             {isCommentsOpen && taskForComments && (
                 <CommentSection
                     task={taskForComments}
