@@ -1,6 +1,7 @@
+// src/pages/Dashboard/DashboardPage.jsx (FIXED CARD WIDTH & REMOVED NOTIFICATION CARD)
+
 import {
     Activity,
-    Bell,
     Briefcase,
     CheckCircle,
     ChevronDown,
@@ -15,40 +16,26 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-// --- MOCK DATA (Simulating user context and fetched data) ---
-const MOCK_USER = {
-    id: 1,
-    name: 'Alice Smith',
-    role: 'Project Manager', // FR-4: Role-based view support
-    username: 'alice.smith'
-};
+import { useAuth } from '../../context/AuthContext';
 
+// --- MOCK DATA (Simulating fetched data) ---
 const MOCK_DASHBOARD_DATA = {
-    // Metrics for the current user's performance and workload
     totalAssignedTasks: 12,
     completedTasks: 5,
     inProgressTasks: 4,
     blockedTasks: 1,
     dueDateApproaching: 2,
-
-    // Overview metrics
     totalProjects: 5,
     activeProjects: 3,
-
-    // Recent activities (FR-7: Activity Log)
     recentActivities: [
         { id: 1, user: 'Bob J.', action: 'marked Task #203 as done', time: '5m ago' },
         { id: 2, user: 'You', action: 'added 3 new tasks to TaskMaster Core', time: '1h ago' },
         { id: 3, user: 'Eve A.', action: 'commented on Task #104', time: '3h ago' }
     ],
-
-    // Mock Recent Comments (FR-18)
     recentComments: [
         { id: 1, user: 'Bob J.', action: 'Task #301 এ মন্তব্য করেছেন', time: '10m ago' },
         { id: 2, user: 'You', action: 'Task #201 এ @Alice কে উল্লেখ করেছেন', time: '4h ago' }
     ],
-
-    // Quick access to assigned projects
     assignedProjects: [
         {
             id: 1,
@@ -75,7 +62,7 @@ const MOCK_DASHBOARD_DATA = {
 };
 // --- END MOCK DATA ---
 
-// Helper Component: Metric Card
+// Helper Component: Metric Card (অপরিবর্তিত)
 function MetricCard({ title, value, icon: Icon, colorClass, description }) {
     return (
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md border-b-4 border-t-2 border-gray-100 transition duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-xl cursor-pointer">
@@ -91,7 +78,7 @@ function MetricCard({ title, value, icon: Icon, colorClass, description }) {
     );
 }
 
-// Helper Component: Project Progress Card (For Assigned Projects)
+// Helper Component: Project Progress Card (অপরিবর্তিত)
 function ProjectProgressCard({ project }) {
     const progressColor =
         project.progress === 100
@@ -103,7 +90,6 @@ function ProjectProgressCard({ project }) {
                 : 'bg-red-500';
 
     return (
-        // Added subtle hover effect and border
         <div className="p-3 bg-white rounded-xl border border-gray-200 hover:shadow-lg transition duration-200 cursor-pointer">
             <div className="flex justify-between items-start mb-2">
                 <h4
@@ -119,8 +105,6 @@ function ProjectProgressCard({ project }) {
                     {project.status}
                 </span>
             </div>
-
-            {/* Progress Bar and Due Date */}
             <div className="text-xs text-gray-600 mb-1 flex justify-between">
                 <span>{project.progress}% Complete</span>
                 <span className="font-medium text-gray-500">Due: {project.dueDate}</span>
@@ -135,7 +119,7 @@ function ProjectProgressCard({ project }) {
     );
 }
 
-// Advanced Filtering Component Placeholder
+// Advanced Filtering Component Placeholder (অপরিবর্তিত)
 function AdvancedFilters() {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
@@ -174,20 +158,22 @@ function AdvancedFilters() {
 
 // Main Component: Project Management Dashboard
 function ProjectDashboard() {
+    const { user, loading: authLoading, hasRole } = useAuth();
+
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    // New state for filter toggle
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     useEffect(() => {
-        // Simulating API call delay
-        setTimeout(() => {
-            setData(MOCK_DASHBOARD_DATA);
-            setLoading(false);
-        }, 800);
-    }, []);
+        if (user) {
+            setTimeout(() => {
+                setData(MOCK_DASHBOARD_DATA);
+                setLoading(false);
+            }, 800);
+        }
+    }, [user]);
 
-    if (loading) {
+    if (authLoading || loading || !user) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <Loader className="w-8 h-8 animate-spin text-indigo-500" />
@@ -196,36 +182,26 @@ function ProjectDashboard() {
         );
     }
 
-    // Task Completion Rate calculation
     const completionRate =
         data.totalAssignedTasks > 0
             ? ((data.completedTasks / data.totalAssignedTasks) * 100).toFixed(0)
             : 0;
 
+    const isManagerOrAdmin = hasRole(['admin', 'project_manager']);
+
     return (
-        // Use a clean, slightly off-white background
         <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans">
-            {/* 🚀 পরিবর্তিত অংশ: Header (স্বাগতম) এবং Notification Card কে একই Grid-এ রাখা হয়েছে */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
-                {/* 1. Header and Welcome Message (2/3 width) */}
-                <div className="lg:col-span-2">
+            {/* 🚀 পরিবর্তিত অংশ: Header শুধুমাত্র Welcome Message রাখবে এবং full width নেবে */}
+            <div className="mb-6 md:mb-8">
+                {/* Header and Welcome Message (Full Width) */}
+                <div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                        👋 স্বাগতম, {MOCK_USER.name}
+                        👋 স্বাগতম, {user.name || user.email}
                     </h1>
                     <p className="text-gray-600 mt-2 text-base md:text-lg">
                         আজকের কাজের ওভারভিউ এবং প্রকল্পের স্থিতি দেখুন। (Role:{' '}
-                        <span className="font-semibold text-indigo-600">{MOCK_USER.role}</span>)
+                        <span className="font-semibold text-indigo-600">{user.role}</span>)
                     </p>
-                </div>
-
-                {/* 2. Notification Card (1/3 width, Right Corner) */}
-                <div className="lg:col-span-1 flex items-center justify-start lg:justify-end">
-                    <div className="bg-white p-4 w-full md:max-w-xs rounded-2xl shadow-xl border border-indigo-100">
-                        <h2 className="text-md font-bold text-gray-800 mb-2 flex items-center border-b pb-1">
-                            <Bell className="w-5 h-5 mr-2 text-amber-500" /> নোটিফিকেশনস
-                        </h2>
-                        <p className="text-sm text-gray-500">৩টি নতুন নোটিফিকেশন অপেক্ষা করছে।</p>
-                    </div>
                 </div>
             </div>
             {/* 🚀 পরিবর্তিত অংশ সমাপ্ত */}
@@ -233,7 +209,7 @@ function ProjectDashboard() {
             {/* --- Global Search and Filtering (FR-15 Implementation) --- */}
             <div className="mb-8 p-4 bg-white rounded-2xl shadow-xl border border-indigo-100">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    {/* Search Input */}
+                    {/* Search Input (অপরিবর্তিত) */}
                     <div className="relative w-full sm:flex-grow">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -242,7 +218,7 @@ function ProjectDashboard() {
                             className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
                         />
                     </div>
-                    {/* Filter Toggle Button */}
+                    {/* Filter Toggle Button (অপরিবর্তিত) */}
                     <button
                         type="button"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -267,13 +243,14 @@ function ProjectDashboard() {
                     </button>
                 </div>
 
-                {/* Advanced Filter Area (Collapsible) */}
+                {/* Advanced Filter Area (Collapsible) (অপরিবর্তিত) */}
                 {showAdvancedFilters && <AdvancedFilters />}
             </div>
-            {/* --- END NEW FILTERING UI --- */}
 
-            {/* --- 1. Top Metrics Grid (Same as before) --- */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
+            {/* --- 1. Top Metrics Grid (Fix: XL grid adjusted to 4) --- */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                {' '}
+                {/* ✅ xl:grid-cols-5 থেকে xl:grid-cols-4 করা হয়েছে */}
                 {/* 1. Total Assigned Tasks */}
                 <MetricCard
                     title="মোট অ্যাসাইন করা কাজ"
@@ -282,7 +259,6 @@ function ProjectDashboard() {
                     colorClass="text-indigo-600"
                     description="আপনার মোট কতগুলি কাজ বাকি আছে"
                 />
-
                 {/* 2. Completed Tasks */}
                 <MetricCard
                     title="সম্পন্ন হয়েছে"
@@ -291,7 +267,6 @@ function ProjectDashboard() {
                     colorClass="text-green-600"
                     description="আজ পর্যন্ত সম্পন্ন করা টাস্ক"
                 />
-
                 {/* 3. In Progress Tasks */}
                 <MetricCard
                     title="কাজ চলছে"
@@ -300,7 +275,6 @@ function ProjectDashboard() {
                     colorClass="text-sky-600"
                     description="বর্তমানে সক্রিয় টাস্ক"
                 />
-
                 {/* 4. Completion Rate */}
                 <MetricCard
                     title="সম্পন্নতার হার"
@@ -309,9 +283,8 @@ function ProjectDashboard() {
                     colorClass="text-purple-600"
                     description="মোট কাজের তুলনায় সম্পন্ন হওয়া টাস্কের অনুপাত"
                 />
-
-                {/* 5. Projects Overview (Manager/Admin View) */}
-                {MOCK_USER.role !== 'Member' && (
+                {/* 5. Projects Overview (Manager/Admin View) - এটি এখন পঞ্চম কার্ড হিসেবে থাকবে যদি রোল ম্যানেজার/অ্যাডমিন হয় */}
+                {isManagerOrAdmin && (
                     <MetricCard
                         title="সক্রিয় প্রকল্প"
                         value={data.activeProjects}
@@ -322,11 +295,11 @@ function ProjectDashboard() {
                 )}
             </div>
 
-            {/* --- 2. Main Content Layout (Task List & Activity Log) (Same as before) --- */}
+            {/* --- 2. Main Content Layout (অপরিবর্তিত) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Column 1: Critical and Assigned Tasks (2/3 width on desktop) */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Critical Tasks Card */}
+                    {/* Critical Tasks Card (অপরিবর্তিত) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl border-l-4 border-red-500">
                         <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center border-b pb-2">
                             <Clock className="w-5 h-5 mr-2" /> ডেডলাইন কাছাকাছি (Upcoming Deadlines)
@@ -346,7 +319,7 @@ function ProjectDashboard() {
                         )}
                     </div>
 
-                    {/* Assigned Projects Quick Access */}
+                    {/* Assigned Projects Quick Access (অপরিবর্তিত) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <Target className="w-5 h-5 mr-2 text-indigo-500" /> আপনার প্রকল্পসমূহ
@@ -361,9 +334,7 @@ function ProjectDashboard() {
 
                 {/* Column 2: Recent Comments & Activity Log (1/3 width on desktop) */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* MOVED: Notifications card removed from here as it's moved to the top */}
-
-                    {/* Recent Comments/Mentions (FR-18 Placeholder) */}
+                    {/* Recent Comments/Mentions (FR-18 Placeholder) (অপরিবর্তিত) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-64 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <MessageSquare className="w-5 h-5 mr-2 text-red-500" /> সাম্প্রতিক
@@ -395,7 +366,7 @@ function ProjectDashboard() {
                         </ul>
                     </div>
 
-                    {/* Existing Recent Activity Log (FR-7) */}
+                    {/* Existing Recent Activity Log (FR-7) (অপরিবর্তিত) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-96 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <Activity className="w-5 h-5 mr-2 text-sky-500" /> সাম্প্রতিক কার্যকলাপ
