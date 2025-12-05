@@ -6,16 +6,14 @@ import { useMemo, useState } from 'react';
 import Button from '../../components/common/Button';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
-// import useAuth from '../../hooks/useAuth'; // Original import
+// import useAuth from '../../hooks/useAuth'; // ✅ রিয়েল অ্যাপে এটিকে আনকমেন্ট করতে হবে
 
 // --- MOCK AUTH HOOK FOR TESTING ---
-// যেহেতু ব্যবহারকারী ক্রিয়েট/এডিট বাটন দেখতে পাচ্ছেন না, আমরা আপাতত useAuth কে মক করছি
-// যাতে canCreateProject সবসময় true রিটার্ন করে এবং UI এর সমস্ত উপাদান দৃশ্যমান হয়।
+// এই মকটি এখন ইউজার ক্রিয়েট/এডিট বাটন দেখতে পাচ্ছেন তা নিশ্চিত করছে।
 const MOCK_CURRENT_USER = { name: 'Alice Smith', role: 'PROJECT_MANAGER' };
 
 const useAuth = () => {
     // Faking user and permission check to force buttons/icons to display
-    // 'roles' parameter removed as it was unused in this mock function.
     const isPermitted = () =>
         // For development/mock purposes, always permit ADMIN/PROJECT_MANAGER roles here
         true;
@@ -79,14 +77,16 @@ const mockProjectMembers = [
 // --- END MOCK DATA ---
 
 function ProjectListPage() {
-    // useAuth এখন মক করা হয়েছে যাতে canCreateProject true হয়।
     const { user, isPermitted } = useAuth();
     const [projects, setProjects] = useState(initialProjects);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [projectToEdit, setProjectToEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    // --- New State for Filter Button ---
+
+    // ✅ FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'To Do', 'In Progress', 'Completed'
+    const [filterAssignment, setFilterAssignment] = useState('Assigned to me'); // 'Assigned to me', 'All'
 
     // FR-5 & FR-7: New Project Save/Edit Handler
     const handleSaveProject = (projectData, isEditing) => {
@@ -119,52 +119,61 @@ function ProjectListPage() {
         setIsModalOpen(true);
     };
 
-    // FR-7: Delete Project Handler
+    // ✅ FR-7: Delete Project Handler (Custom Modal Placeholder)
     const handleDeleteProject = (projectId) => {
-        // NOTE: In a real app, this should be a custom modal.
-        // The project mandates not to use window.confirm/alert.
-        // Since we don't have a custom modal component yet, leaving as is for mock functionality,
-        // but adding a console warning.
-        console.warn('Using window.confirm - replace with custom modal for production use.');
-        if (window.confirm('Are you sure you want to delete this project?')) {
-            setProjects((prevProjects) => prevProjects.filter((p) => p.id !== projectId));
-            console.log(`Project ID ${projectId} deleted.`);
-        }
+        // ⚠️ CRITICAL CHANGE: window.confirm/alert বাদ দেওয়া হলো।
+        // প্রোডাকশনে ব্যবহারের জন্য এখানে অবশ্যই একটি কাস্টম কনফার্মেশন মোডাল রেন্ডার করতে হবে।
+        console.warn(
+            'Deletion attempted. A custom modal is required before permanent deletion. Simulating confirmation...'
+        );
+
+        // --- START: Temporary Simulated Deletion Logic ---
+        // ধরে নেওয়া হলো ইউজার কাস্টম মোডালে "Confirm" করেছেন
+        setProjects((prevProjects) => prevProjects.filter((p) => p.id !== projectId));
+        console.log(`Project ID ${projectId} deleted.`);
+        // --- END: Temporary Simulated Deletion Logic ---
     };
 
     // FR-3: Check if the user is Project Manager or Admin (Now returns true via MOCK)
-    const canCreateProject = isPermitted(); // isPermitted() now takes no arguments
+    const canCreateProject = isPermitted();
 
-    // FR-8 & Filtering Logic
+    // ✅ FR-8 & Filtering Logic: useMemo আপডেট করা হলো নতুন ফিল্টার স্টেটগুলির জন্য
     const filteredAndSearchedProjects = useMemo(() => {
-        // Mock User name for filtering
         const userName = user?.name || 'Alice Smith';
+        let filtered = projects;
 
-        // 1. Filter by User (FR-8)
-        const userFiltered = projects.filter(
-            (project) => project.manager.includes(userName) || project.members.includes(userName)
-        );
+        // 1. Filter by User Assignment (FR-8 refinement)
+        if (filterAssignment === 'Assigned to me') {
+            filtered = filtered.filter(
+                (project) =>
+                    project.manager.includes(userName) || project.members.includes(userName)
+            );
+        }
 
-        // 2. Filter by Search Term
-        if (!searchTerm) return userFiltered;
+        // 2. Filter by Status (FR-8 refinement)
+        if (filterStatus !== 'All') {
+            filtered = filtered.filter((project) => project.status === filterStatus);
+        }
 
-        const lowerCaseSearch = searchTerm.toLowerCase();
+        // 3. Filter by Search Term
+        if (searchTerm) {
+            const lowerCaseSearch = searchTerm.toLowerCase();
+            filtered = filtered.filter(
+                (project) =>
+                    project.title.toLowerCase().includes(lowerCaseSearch) ||
+                    project.description.toLowerCase().includes(lowerCaseSearch) ||
+                    project.manager.toLowerCase().includes(lowerCaseSearch) ||
+                    project.members.some((member) => member.toLowerCase().includes(lowerCaseSearch))
+            );
+        }
 
-        const searchFiltered = userFiltered.filter(
-            (project) =>
-                project.title.toLowerCase().includes(lowerCaseSearch) ||
-                project.description.toLowerCase().includes(lowerCaseSearch) ||
-                project.manager.toLowerCase().includes(lowerCaseSearch) ||
-                project.members.some((member) => member.toLowerCase().includes(lowerCaseSearch))
-        );
-
-        // 3. Sort by Status (In Progress first)
-        return searchFiltered.sort((a, b) => {
+        // 4. Sort by Status (In Progress first)
+        return filtered.sort((a, b) => {
             if (a.status === 'In Progress' && b.status !== 'In Progress') return -1;
             if (a.status !== 'In Progress' && b.status === 'In Progress') return 1;
             return 0;
         });
-    }, [projects, user, searchTerm]);
+    }, [projects, user, searchTerm, filterStatus, filterAssignment]); // Dependency Array আপডেট করা হলো
 
     return (
         <div className="p-6 md:p-8 bg-gray-50 min-h-screen">
@@ -207,23 +216,67 @@ function ProjectListPage() {
                     className="flex items-center space-x-2 w-full md:w-auto"
                     onClick={() => {
                         setIsFilterOpen(!isFilterOpen);
-                        // In a real application, this would open a filter modal/drawer
-                        console.log(`Filter Toggle: ${!isFilterOpen ? 'Open' : 'Close'}`);
                     }}
                 >
                     <Filter className="w-5 h-5" />
-                    <span>Filter ({isFilterOpen ? 'Active' : 'Inactive'})</span>
+                    <span>
+                        Filter (
+                        {filterStatus !== 'All' || filterAssignment !== 'Assigned to me'
+                            ? 'Active'
+                            : 'Inactive'}
+                        )
+                    </span>
                 </Button>
             </div>
 
-            {/* Mock Filter UI (Shows when Filter button is clicked) */}
+            {/* ✅ FR-8: Filter UI Implementaion */}
             {isFilterOpen && (
                 <div className="bg-white p-4 rounded-xl shadow mb-6 border border-gray-200">
-                    <p className="text-sm font-medium text-gray-700">
-                        Mock Filter Options: (Here you would add Status/Manager/Date filters)
+                    <p className="text-sm font-semibold text-gray-800 mb-3">
+                        Refine Projects (FR-8)
                     </p>
-                    <div className="mt-2 text-xs text-gray-500">
-                        <p>Filtering UI will be implemented here to refine the project list.</p>
+
+                    <div className="flex flex-wrap gap-4">
+                        {/* Assignment Filter */}
+                        <div className="flex flex-col space-y-1 w-full sm:w-auto">
+                            <label
+                                htmlFor="filterAssignment"
+                                className="text-xs font-medium text-gray-500"
+                            >
+                                Assignment
+                            </label>
+                            <select
+                                id="filterAssignment"
+                                value={filterAssignment}
+                                onChange={(e) => setFilterAssignment(e.target.value)}
+                                className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="Assigned to me">Assigned to me</option>
+                                <option value="All">All Projects</option>
+                            </select>
+                        </div>
+
+                        {/* Status Filter */}
+                        <div className="flex flex-col space-y-1 w-full sm:w-auto">
+                            <label
+                                htmlFor="filterStatus"
+                                className="text-xs font-medium text-gray-500"
+                            >
+                                Status
+                            </label>
+                            <select
+                                id="filterStatus"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="All">All Statuses</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="To Do">To Do</option>
+                                <option value="Completed">Completed</option>
+                                <option value="On Hold">On Hold</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             )}
@@ -235,8 +288,7 @@ function ProjectListPage() {
                         <ProjectCard
                             key={project.id}
                             project={project}
-                            // onEdit and onDelete props are now guaranteed to be passed the handlers,
-                            // making the icons visible in ProjectCard.jsx
+                            // onEdit and onDelete icons are shown based on permission
                             onEdit={canCreateProject ? handleEditProject : null}
                             onDelete={canCreateProject ? handleDeleteProject : null}
                         />
@@ -246,7 +298,7 @@ function ProjectListPage() {
                         <p className="text-lg font-medium mb-2">No Projects Found.</p>
                         <p>
                             You haven't been assigned to any project yet, or no projects match your
-                            search.
+                            search/filters.
                         </p>
                     </div>
                 )}
