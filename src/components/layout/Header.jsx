@@ -2,8 +2,8 @@
 
 import { LogOut, Menu, Search, User } from 'lucide-react';
 
+import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
-import useAuth from '../../hooks/useAuth';
 import NotificationBell from './NotificationBell'; // NotificationBell কম্পোনেন্ট আমদানি
 
 function Header() {

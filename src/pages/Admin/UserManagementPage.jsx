@@ -4,7 +4,7 @@ import { AlertTriangle, Edit, Plus, Trash2, UserCheck, UserX } from 'lucide-reac
 import { useState } from 'react';
 
 import Button from '../../components/common/Button';
-import useAuth from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import { USER_ROLES } from '../../utils/constants';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';

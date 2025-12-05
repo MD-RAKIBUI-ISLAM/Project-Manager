@@ -1,16 +1,15 @@
-// src/pages/Auth/LoginPage.jsx (FINAL Working Version with Redirection)
+// src/pages/Auth/LoginPage.jsx (FINAL Working Version with Login Call Fix)
 
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
-// useNavigate আমদানি করা হলো
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import * as yup from 'yup';
 
 import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
-import useAuth from '../../hooks/useAuth'; // .js এক্সটেনশন ব্যবহার করা হয়েছে
+import { useAuth } from '../../context/AuthContext';
 
-// Validation Schema: YUP ব্যবহার করে ডেটা ভ্যালিডেশন
+// Validation Schema
 const loginSchema = yup.object().shape({
     email: yup.string().email('Invalid email address').required('Email is required'),
     password: yup.string().required('Password is required')
@@ -18,9 +17,8 @@ const loginSchema = yup.object().shape({
 
 function LoginPage() {
     const { isAuthenticated, login, loading, authError } = useAuth();
-    const navigate = useNavigate(); // ✅ useNavigate ইনিশিয়ালাইজ করা হলো
+    const navigate = useNavigate();
 
-    // react-hook-form সেটআপ
     const {
         register,
         handleSubmit,
@@ -31,19 +29,17 @@ function LoginPage() {
 
     // ফর্ম সাবমিশন হ্যান্ডলার
     const onSubmit = async (data) => {
-        // AuthContext থেকে login function কল করা
-        const success = await login(data);
+        // ✅ ফিক্স: login ফাংশনে email এবং password আলাদাভাবে পাস করা হলো
+        const result = await login(data.email, data.password);
 
-        // ✅ সমাধান: লগইন সফল হলে ড্যাশবোর্ডে রিডাইরেক্ট করা
-        if (success) {
+        // result অবজেক্টের মধ্যে success প্রপার্টিটি চেক করা হলো
+        if (result && result.success) {
             navigate('/dashboard', { replace: true });
         } else {
-            // যদি login ব্যর্থ হয় (mock error), তবে authError ডিসপ্লে হবে
             console.error('Login Failed. Displayed error to user via authError.');
         }
     };
 
-    // যদি already authenticated হয়, তবে Dashboard-এ redirect
     if (isAuthenticated) {
         return <Navigate to="/dashboard" replace />;
     }
@@ -79,7 +75,6 @@ function LoginPage() {
                 {/* Login Form */}
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
                     <div className="space-y-4">
-                        {/* Email Field */}
                         <InputField
                             label="Email address"
                             name="email"
@@ -89,7 +84,6 @@ function LoginPage() {
                             error={errors.email}
                         />
 
-                        {/* Password Field */}
                         <InputField
                             label="Password"
                             name="password"

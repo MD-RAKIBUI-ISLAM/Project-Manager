@@ -1,14 +1,38 @@
-// src/context/AuthContext.jsx (FINAL, WARNING-FREE VERSION)
+// src/context/AuthContext.jsx (FINAL Error-Free Working Mocking Logic)
 
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-// NOTE: getErrorMessage এবং axiosClient আপনার প্রোজেক্টে বিদ্যমান থাকতে হবে।
-import axiosClient from '../api/axiosClient';
+// --- INITIAL MOCK USER DATA (পাসওয়ার্ডসহ প্রাথমিক ডেটা) ---
+const INITIAL_MOCK_USERS = [
+    {
+        id: 1,
+        name: 'Alice Smith',
+        email: 'admin@project.com',
+        role: 'admin',
+        token: 'mock-admin-token',
+        password: 'password'
+    },
+    {
+        id: 2,
+        name: 'Bob Johnson',
+        email: 'manager@project.com',
+        role: 'project_manager',
+        token: 'mock-manager-token',
+        password: 'password'
+    },
+    {
+        id: 3,
+        name: 'Charlie Brown',
+        email: 'member@project.com',
+        role: 'member',
+        token: 'mock-member-token',
+        password: 'password'
+    }
+];
+// --- END INITIAL MOCK USER DATA ---
 
-// AuthContext কে অবশ্যই Named Export করতে হবে
 export const AuthContext = createContext();
 
-// ইনিশিয়াল স্টেট লোড করা: localStorage থেকে টোকেন এবং ইউজার ডেটা লোড করা।
 const getInitialState = () => {
     const token = localStorage.getItem('access_token');
     const userString = localStorage.getItem('user');
@@ -24,7 +48,7 @@ const getInitialState = () => {
     }
 
     return {
-        isAuthenticated: !!token,
+        isAuthenticated: !!token && !!user,
         user,
         loading: false,
         authError: null
@@ -33,29 +57,107 @@ const getInitialState = () => {
 
 export function AuthProvider({ children }) {
     const [state, setState] = useState(getInitialState);
+    const [mockUsers, setMockUsers] = useState(INITIAL_MOCK_USERS);
 
-    // --- State Setters (useAuth hook-এ ব্যবহারের জন্য) ---
-    const setLoading = (val) => setState((s) => ({ ...s, loading: val }));
-    const setAuthError = (err) => setState((s) => ({ ...s, authError: err }));
-    const setIsAuthenticated = (val) => setState((s) => ({ ...s, isAuthenticated: val }));
-    const setUser = (userData) => setState((s) => ({ ...s, user: userData }));
+    // --- Stable State Setters ---
+    const setLoading = useCallback((val) => setState((s) => ({ ...s, loading: val })), [setState]);
+    const setAuthError = useCallback(
+        (err) => setState((s) => ({ ...s, authError: err })),
+        [setState]
+    );
+    const setIsAuthenticated = useCallback(
+        (val) => setState((s) => ({ ...s, isAuthenticated: val })),
+        [setState]
+    );
+    const setUser = useCallback(
+        (userData) => setState((s) => ({ ...s, user: userData })),
+        [setState]
+    );
 
-    // --- Auth Actions ---
+    // ১. লগইন ফাংশন (Mocked FR-1)
+    const login = useCallback(
+        async (email, password) => {
+            setLoading(true);
+            setAuthError(null);
+            await new Promise((resolve) => {
+                setTimeout(resolve, 800);
+            });
 
-    // ১. লগইন ফাংশন (Login Function)
-    // WARING FIX: credentials আর্গুমেন্ট সরানো হলো, কারণ এটি Context-এ ব্যবহৃত হয় না।
-    const login = async () => {
-        // এই ফাংশনটি Hook-এ মক করা আছে, তাই এখানে শুধু একটি প্লেসহোল্ডার থাকল।
-        console.error('Context login called. This should be handled by useAuth hook in mock mode.');
-        return false;
-    };
+            // ইউজার প্রদত্ত পাসওয়ার্ড চেক করা হচ্ছে
+            const foundUser = mockUsers.find(
+                (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+            );
 
-    // ২. লগআউট ফাংশন (Logout Function)
-    const logout = () => {
+            if (foundUser) {
+                localStorage.setItem('access_token', foundUser.token);
+                localStorage.setItem('user', JSON.stringify(foundUser));
+
+                setState((s) => ({
+                    ...s,
+                    user: foundUser,
+                    isAuthenticated: true,
+                    loading: false
+                }));
+                return { success: true };
+            }
+            const error = 'Invalid email or password.';
+            setAuthError(error);
+            setLoading(false);
+            return { success: false, error };
+        },
+        [setLoading, setAuthError, mockUsers, setState]
+    );
+
+    // ২. রেজিস্ট্রেশন ফাংশন (Mocked FR-2)
+    const register = useCallback(
+        async (name, email, password) => {
+            setLoading(true);
+            setAuthError(null);
+            await new Promise((resolve) => {
+                setTimeout(resolve, 800);
+            });
+
+            const isEmailTaken = mockUsers.some(
+                (u) => u.email.toLowerCase() === email.toLowerCase()
+            );
+
+            if (isEmailTaken) {
+                const error = 'User with this email already exists.';
+                setAuthError(error);
+                setLoading(false);
+                return { success: false, error };
+            }
+
+            const newUser = {
+                id: mockUsers.length + 1,
+                name,
+                email,
+                role: 'member', // রেজিস্ট্রেশনের পর ডিফল্ট রোল
+                token: `mock-token-${mockUsers.length + 1}`,
+                password // পাসওয়ার্ড সেভ করা হলো
+            };
+
+            // নতুন ইউজারকে mutable mockUsers লিস্টে যোগ করা হলো
+            setMockUsers((prev) => [...prev, newUser]);
+
+            localStorage.setItem('access_token', newUser.token);
+            localStorage.setItem('user', JSON.stringify(newUser));
+
+            setState((s) => ({
+                ...s,
+                user: newUser,
+                isAuthenticated: true,
+                loading: false
+            }));
+            return { success: true };
+        },
+        [setLoading, setAuthError, mockUsers, setMockUsers, setState]
+    );
+
+    // ৩. লগআউট ফাংশন
+    const logout = useCallback(() => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
-        // Axios client থেকে Auth header মুছে ফেলা
-        delete axiosClient.defaults.headers.Authorization;
 
         setState({
             isAuthenticated: false,
@@ -63,32 +165,55 @@ export function AuthProvider({ children }) {
             loading: false,
             authError: null
         });
-    };
+    }, [setState]);
 
-    // ৩. প্রোফাইল আপডেট ফাংশন (Optional)
-    const updateProfile = (newUserData) => {
-        localStorage.setItem('user', JSON.stringify(newUserData));
-        setState((s) => ({ ...s, user: newUserData }));
-    };
+    // ৪. প্রোফাইল আপডেট ফাংশন
+    const updateProfile = useCallback(
+        (newUserData) => {
+            const updatedUser = { ...state.user, ...newUserData };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setState((s) => ({ ...s, user: updatedUser }));
+        },
+        [state.user, setState]
+    );
 
-    // --- Context Value Optimization (useMemo ব্যবহার) ---
+    // --- Context Value Optimization ---
     const authContextValue = useMemo(
         () => ({
             ...state,
-            // Setter Functions
             setLoading,
             setAuthError,
             setIsAuthenticated,
             setUser,
             login,
+            register,
             logout,
-            updateProfile
+            updateProfile,
+            // Role Checkers
+            isAdmin: state.user?.role === 'admin',
+            isManager: state.user?.role === 'project_manager',
+            hasRole: (roles) => {
+                if (!state.user) return false;
+                if (Array.isArray(roles)) {
+                    return roles.includes(state.user.role);
+                }
+                return state.user.role === roles;
+            }
         }),
-        [state]
+        [
+            state,
+            login,
+            register,
+            logout,
+            updateProfile,
+            setLoading,
+            setAuthError,
+            setIsAuthenticated,
+            setUser
+        ]
     );
 
     return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>;
 }
 
-// Custom Hook to use the Auth context (useAuth hook)
 export const useAuth = () => useContext(AuthContext);

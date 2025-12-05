@@ -1,15 +1,14 @@
-// src/pages/Auth/RegisterPage.jsx (FINAL MOCK INTEGRATION)
+// src/pages/Auth/RegisterPage.jsx (FINAL MOCK INTEGRATION - WORKING)
 
 import { yupResolver } from '@hookform/resolvers/yup';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // ✅ useNavigate আমদানি করা হলো
 import * as yup from 'yup';
 
-// axiosClient আর দরকার নেই
 import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
-import useAuth from '../../hooks/useAuth'; // <--- useAuth hook আমদানি করা হলো
+import { useAuth } from '../../context/AuthContext'; // <--- useAuth hook আমদানি করা হলো
 
 // Validation Schema
 const registerSchema = yup.object().shape({
@@ -27,12 +26,15 @@ const registerSchema = yup.object().shape({
 });
 
 function RegisterPage() {
-    // Context থেকে loading এবং error স্টেট আনা যেতে পারে, তবে local state-ও কাজ করবে
+    // Note: আমরা এখন Context-এর loading/error ব্যবহার না করে, registration flow-এর জন্য
+    // local state ব্যবহার করছি, যাতে Registration সফল হলে Success message দেখানো যায়।
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [success, setSuccess] = React.useState(false);
 
-    const { register: authRegister, authError } = useAuth(); // <--- authRegister ফাংশন আনা হলো
+    // AuthContext থেকে register ফাংশন এবং context error আনা হলো
+    const { register: authRegister, authError } = useAuth();
+    const navigate = useNavigate(); // ✅ useNavigate ইনিশিয়ালাইজ করা হলো
 
     const {
         register,
@@ -48,14 +50,22 @@ function RegisterPage() {
         setSuccess(false);
 
         try {
-            // Mock register function call
-            const registrationSuccess = await authRegister(data);
+            // ✅ FIX: authRegister ফাংশনে তিনটি আর্গুমেন্ট (full_name, email, password) পাস করা হলো
+            const result = await authRegister(data.full_name, data.email, data.password);
 
-            if (registrationSuccess) {
-                setSuccess(true);
+            if (result && result.success) {
+                // রেজিস্ট্রেশন সফল হলে, ইউজারকে সরাসরি ড্যাশবোর্ডে নিয়ে যাওয়া হলো (যেমনটা AuthContext করে)
+                navigate('/dashboard', { replace: true });
+
+                // OR যদি আপনি শুধু Success Message দেখাতে চান, তবে নিচের লাইন ব্যবহার করুন:
+                // setSuccess(true);
             } else {
-                // Mock API failure হলে authError ব্যবহার করা হলো
-                setError(authError || 'Registration failed. Please try again.');
+                // Mock API failure হলে Context থেকে আসা error বা default error দেখানো হলো
+                setError(
+                    authError ||
+                        (result && result.error) ||
+                        'Registration failed. Please try again.'
+                );
             }
         } catch (err) {
             setError('An unexpected error occurred.');
@@ -64,6 +74,8 @@ function RegisterPage() {
         }
     };
 
+    // Note: যেহেতু AuthContext স্বয়ংক্রিয়ভাবে সফল রেজিস্ট্রেশনের পর লগইন করে দেয়,
+    // তাই সফল হলে সরাসরি নেভিগেট করাই শ্রেয়। Success message-এর প্রয়োজন নেই।
     if (success) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
@@ -72,12 +84,12 @@ function RegisterPage() {
                         Registration Successful!
                     </h2>
                     <p className="mt-4 text-center text-gray-600">
-                        Your account has been created. You can now{' '}
+                        Your account has been created and you are now logged in. Go to{' '}
                         <Link
-                            to="/login"
+                            to="/dashboard"
                             className="font-medium text-indigo-600 hover:text-indigo-500"
                         >
-                            Sign in
+                            Dashboard
                         </Link>
                         .
                     </p>

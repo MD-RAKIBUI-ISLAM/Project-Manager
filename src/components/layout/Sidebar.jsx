@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
+import { useAuth } from '../../context/AuthContext'; // .js এক্সটেনশন ব্যবহার করা হলো
 import { useSidebar } from '../../context/SidebarContext';
-import useAuth from '../../hooks/useAuth'; // .js এক্সটেনশন ব্যবহার করা হলো
 
 // --- Global Nav Links Data (সঠিকভাবে শেষ করা হয়েছে) ---
 const navLinks = [

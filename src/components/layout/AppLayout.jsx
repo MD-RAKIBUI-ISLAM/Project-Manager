@@ -2,8 +2,8 @@
 
 import { Outlet } from 'react-router-dom';
 
+import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider } from '../../context/SidebarContext'; // <--- এটি ইমপোর্ট করুন
-import useAuth from '../../hooks/useAuth';
 import Header from './Header';
 import Sidebar from './Sidebar';
 
