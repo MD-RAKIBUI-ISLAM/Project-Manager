@@ -7,16 +7,22 @@ import {
     Calendar,
     CheckCircle,
     Clock,
+    Kanban,
     List,
     Loader,
+    Plus,
     User,
     Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import CommentSection from '../../components/tasks/CommentSection';
+import TaskBoard from '../../components/tasks/TaskBoard'; // ✅ Uncommented: TaskBoard.jsx আমদানি করা হলো
+// --- Import Reusable Components (Assuming paths) ---
+import TaskModal from '../../components/tasks/TaskModal';
+
 // --- MOCK DATA ---
-// A centralized function to get project data
 const mockProjects = [
     {
         id: 1,
@@ -54,6 +60,7 @@ const mockProjects = [
     }
 ];
 
+// Existing mockTasks remain for initial data load
 const mockTasks = [
     {
         id: 101,
@@ -61,7 +68,9 @@ const mockTasks = [
         status: 'done',
         priority: 'high',
         assignee: 'Alice Smith',
-        dueDate: '2025-12-10'
+        assigneeId: 1,
+        dueDate: '2025-12-10',
+        description: 'Completed basic schemas for user and project models.'
     },
     {
         id: 102,
@@ -69,7 +78,9 @@ const mockTasks = [
         status: 'in_progress',
         priority: 'critical',
         assignee: 'Bob Johnson',
-        dueDate: '2025-12-18'
+        assigneeId: 2,
+        dueDate: '2025-12-18',
+        description: 'Working on request validation and database interaction.'
     },
     {
         id: 103,
@@ -77,7 +88,9 @@ const mockTasks = [
         status: 'to_do',
         priority: 'medium',
         assignee: 'Eve Adams',
-        dueDate: '2025-12-25'
+        assigneeId: 3,
+        dueDate: '2025-12-25',
+        description: ''
     },
     {
         id: 104,
@@ -85,7 +98,9 @@ const mockTasks = [
         status: 'blocked',
         priority: 'high',
         assignee: 'Alice Smith',
-        dueDate: '2026-01-05'
+        assigneeId: 1,
+        dueDate: '2026-01-05',
+        description: 'Blocked waiting for SMTP server credentials.'
     },
     {
         id: 201,
@@ -93,7 +108,9 @@ const mockTasks = [
         status: 'done',
         priority: 'low',
         assignee: 'Bob Johnson',
-        dueDate: '2025-12-05'
+        assigneeId: 2,
+        dueDate: '2025-12-05',
+        description: 'Documented core component styles and usage.'
     },
     {
         id: 202,
@@ -101,7 +118,9 @@ const mockTasks = [
         status: 'in_progress',
         priority: 'medium',
         assignee: 'Chris Lee',
-        dueDate: '2025-12-20'
+        assigneeId: 4,
+        dueDate: '2025-12-20',
+        description: 'Implementation in progress, focusing on form validation (FR-10).'
     },
     {
         id: 203,
@@ -109,7 +128,9 @@ const mockTasks = [
         status: 'done',
         priority: 'high',
         assignee: 'Alice Smith',
-        dueDate: '2025-12-01'
+        assigneeId: 1,
+        dueDate: '2025-12-01',
+        description: 'Finished basic React Router setup and main app layout.'
     }
 ];
 
@@ -118,7 +139,7 @@ const getTasksByProject = (projectTaskIds) =>
     mockTasks.filter((t) => projectTaskIds.includes(t.id));
 // --- END MOCK DATA ---
 
-// Task Status Styles (Reused from Task Management)
+// Hardcoded Styles (Typically from constants.js)
 const statusStyles = {
     to_do: { label: 'To Do', color: 'bg-gray-100 text-gray-700', icon: Clock },
     in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700', icon: Activity },
@@ -126,7 +147,6 @@ const statusStyles = {
     done: { label: 'Done', color: 'bg-green-100 text-green-700', icon: CheckCircle }
 };
 
-// Priority Styles (Reused from Task Management)
 const priorityClasses = {
     critical: 'font-bold text-red-600',
     high: 'font-medium text-orange-600',
@@ -134,13 +154,13 @@ const priorityClasses = {
     low: 'text-green-600'
 };
 
-// Helper component for task list item
+// Helper component for task list item (kept for 'List' View)
 function ProjectTaskItem({ task }) {
     const statusInfo = statusStyles[task.status] || statusStyles.to_do;
     const StatusIcon = statusInfo.icon;
 
     return (
-        <div className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition rounded-lg">
+        <div className="flex justify-between items-center p-3 border-b hover:bg-gray-100 transition rounded-lg cursor-pointer">
             <div className="flex-grow min-w-0 pr-4">
                 <p className="text-sm font-medium text-gray-800 truncate" title={task.title}>
                     {task.title}
@@ -171,24 +191,68 @@ function ProjectTaskItem({ task }) {
 }
 
 function ProjectDetailPage() {
-    // Get project ID from URL parameters
     const { projectId } = useParams();
     const [project, setProject] = useState(null);
-    const [tasks, setTasks] = useState([]);
+    const [tasks, setTasks] = useState([]); // Master state for tasks
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // ✅ Task Management States
+    const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
+    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+    const [isCommentSidebarOpen, setIsCommentSidebarOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState(null); // Task being edited or commented on
+
+    // --- Task Handlers (Mock Implementation) ---
+    const handleSaveTask = (taskData, isEditing) => {
+        // In a real app, this calls an API and re-fetches tasks.
+        console.log(`[MOCK API] Saving task: ${isEditing ? 'Editing' : 'Creating'}`, taskData);
+
+        setTasks((prevTasks) => {
+            if (isEditing) {
+                // Edit existing task
+                return prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData } : t));
+            }
+            // Create new task with a temporary ID and default status
+            const newId = Date.now();
+            return [...prevTasks, { ...taskData, id: newId, status: 'to_do' }];
+        });
+
+        setIsTaskModalOpen(false);
+        setSelectedTask(null);
+    };
+
+    const handleStatusChange = (taskId, newStatus) => {
+        // In a real app, this calls an API to update status (FR-12)
+        console.log(`[MOCK API] Task ${taskId} status changed to ${newStatus}`);
+
+        setTasks((prevTasks) =>
+            prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+        );
+    };
+
+    // UI Handler for opening Task Modal (for creating or editing)
+    const handleOpenTaskModal = (task = null) => {
+        setSelectedTask(task);
+        setIsTaskModalOpen(true);
+    };
+
+    // UI Handler for opening Comment Section (FR-14)
+    const handleOpenCommentSection = (task) => {
+        setSelectedTask(task);
+        setIsCommentSidebarOpen(true);
+    };
+    // --- End Task Handlers ---
 
     // Mock data fetching (simulating API call)
     useEffect(() => {
         setLoading(true);
         setError(null);
 
-        // Simulate fetching project data
         const fetchedProject = getProjectById(projectId);
 
         if (fetchedProject) {
             setProject(fetchedProject);
-            // Simulate fetching associated tasks
             const fetchedTasks = getTasksByProject(fetchedProject.tasks);
             setTasks(fetchedTasks);
         } else {
@@ -224,7 +288,6 @@ function ProjectDetailPage() {
         );
     }
 
-    // Calculate Task Metrics
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter((t) => t.status === 'done').length;
     const pendingTasks = totalTasks - completedTasks;
@@ -250,10 +313,9 @@ function ProjectDetailPage() {
                 <h1 className="text-4xl font-extrabold text-gray-900 mb-3 flex items-center">
                     <Briefcase className="w-8 h-8 mr-3 text-indigo-600" /> {project.title}
                 </h1>
-
                 <p className="text-gray-600 mb-6 border-b pb-4">{project.description}</p>
 
-                {/* Key Metrics Grid */}
+                {/* Key Metrics Grid (unchanged) */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
                     {/* Progress */}
                     <div className="p-4 bg-indigo-50 rounded-lg shadow-sm">
@@ -268,7 +330,6 @@ function ProjectDetailPage() {
                             />
                         </div>
                     </div>
-
                     {/* Total Tasks */}
                     <div className="p-4 bg-gray-100 rounded-lg shadow-sm">
                         <p className="text-xs font-semibold uppercase text-gray-600 mb-1">
@@ -276,7 +337,6 @@ function ProjectDetailPage() {
                         </p>
                         <p className="text-3xl font-bold text-gray-800">{totalTasks}</p>
                     </div>
-
                     {/* Completed Tasks */}
                     <div className="p-4 bg-green-50 rounded-lg shadow-sm">
                         <p className="text-xs font-semibold uppercase text-green-600 mb-1">
@@ -284,7 +344,6 @@ function ProjectDetailPage() {
                         </p>
                         <p className="text-3xl font-bold text-green-800">{completedTasks}</p>
                     </div>
-
                     {/* Pending Tasks */}
                     <div className="p-4 bg-yellow-50 rounded-lg shadow-sm">
                         <p className="text-xs font-semibold uppercase text-yellow-600 mb-1">
@@ -295,14 +354,13 @@ function ProjectDetailPage() {
                 </div>
             </div>
 
-            {/* Details and Task List Layout */}
+            {/* Details and Task View Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Column 1: Project Details */}
+                {/* Column 1: Project Details (unchanged) */}
                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-xl h-full">
                     <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
                         <List className="w-5 h-5 mr-2 text-indigo-500" /> Project Information
                     </h2>
-
                     <div className="space-y-4">
                         <div className="flex items-center text-sm text-gray-700">
                             <User className="w-5 h-5 mr-3 text-indigo-500 flex-shrink-0" />
@@ -311,7 +369,6 @@ function ProjectDetailPage() {
                                 <p>{project.manager.name}</p>
                             </div>
                         </div>
-
                         <div className="flex items-center text-sm text-gray-700">
                             <Calendar className="w-5 h-5 mr-3 text-indigo-500 flex-shrink-0" />
                             <div>
@@ -321,7 +378,6 @@ function ProjectDetailPage() {
                                 </p>
                             </div>
                         </div>
-
                         <div className="flex items-center text-sm text-gray-700">
                             <Activity className="w-5 h-5 mr-3 text-indigo-500 flex-shrink-0" />
                             <div>
@@ -356,36 +412,113 @@ function ProjectDetailPage() {
                     </div>
                 </div>
 
-                {/* Column 2 & 3: Associated Tasks */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-xl">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
-                        <List className="w-5 h-5 mr-2 text-indigo-500" /> Associated Tasks
-                    </h2>
-
-                    {tasks.length > 0 ? (
-                        <div className="space-y-1">
-                            {tasks.map((task) => (
-                                // Link to full Task Board is suggested here (FR-15)
-                                <ProjectTaskItem key={task.id} task={task} />
-                            ))}
+                {/* Column 2 & 3: Task View (Kanban/List) */}
+                <div className="lg:col-span-2">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl">
+                        {/* Task View Header, Toggle, and Add Button */}
+                        <div className="flex justify-between items-center border-b pb-4 mb-4">
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                                {viewMode === 'kanban' ? (
+                                    <Kanban className="w-6 h-6 mr-3 text-indigo-500" />
+                                ) : (
+                                    <List className="w-6 h-6 mr-3 text-indigo-500" />
+                                )}
+                                Tasks Overview
+                            </h2>
+                            <div className="flex space-x-3">
+                                {/* View Toggle */}
+                                <div className="inline-flex rounded-lg shadow-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('kanban')}
+                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-l-lg transition-colors border ${
+                                            viewMode === 'kanban'
+                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <Kanban className="w-4 h-4 mr-2" /> Kanban
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('list')}
+                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-r-lg transition-colors border ${
+                                            viewMode === 'list'
+                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <List className="w-4 h-4 mr-2" /> List
+                                    </button>
+                                </div>
+                                {/* Add Task Button (FR-10) */}
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenTaskModal(null)}
+                                    className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
+                                >
+                                    <Plus className="w-5 h-5 mr-2" /> New Task
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                            <p>No tasks found for this project yet.</p>
-                            {/* In a real app, a button to create a new task would be here */}
-                        </div>
-                    )}
 
-                    <div className="mt-4 text-center border-t pt-4">
-                        <Link
-                            to="/taskboard"
-                            className="text-indigo-600 hover:text-indigo-800 font-medium transition"
-                        >
-                            View All Tasks in Kanban Board →
-                        </Link>
+                        {/* Task Content Area */}
+                        {viewMode === 'kanban' ? (
+                            <div className="py-4">
+                                {/* ✅ TaskBoard Component Rendering (Uncommented) */}
+                                <TaskBoard
+                                    tasks={tasks}
+                                    projectMembers={project.members}
+                                    onStatusChange={handleStatusChange}
+                                    onEditTask={handleOpenTaskModal} // Edit opens the modal
+                                    onOpenComments={handleOpenCommentSection} // Comments open the sidebar
+                                />
+                            </div>
+                        ) : (
+                            // List View (A11Y fix applied)
+                            <div className="space-y-1 py-4">
+                                {tasks.length > 0 ? (
+                                    tasks.map((task) => (
+                                        <button // ✅ Clickable div changed to button for accessibility
+                                            key={task.id}
+                                            type="button"
+                                            onClick={() => handleOpenTaskModal(task)} // Click to edit/view details
+                                            // Ensure button looks like the original div
+                                            className="w-full p-0 border-none bg-transparent appearance-none text-left"
+                                        >
+                                            <ProjectTaskItem task={task} />
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                                        <p>No tasks found for this project yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* --- Modals and Sidebars (Conditional Rendering) --- */}
+            {isTaskModalOpen && (
+                <TaskModal
+                    task={selectedTask}
+                    onClose={() => setIsTaskModalOpen(false)}
+                    onSave={handleSaveTask}
+                    projectMembers={project.members}
+                />
+            )}
+
+            {isCommentSidebarOpen && selectedTask && (
+                <CommentSection
+                    task={selectedTask}
+                    onClose={() => {
+                        setIsCommentSidebarOpen(false);
+                        setSelectedTask(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

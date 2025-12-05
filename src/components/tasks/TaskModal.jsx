@@ -27,23 +27,23 @@ function TaskModal({ task, onClose, onSave, projectMembers = mockUsers }) {
     const isEditing = !!task;
 
     // Default values
-    const defaultPriority = TASK_PRIORITIES[0]?.value || 'medium'; // Default to the first priority (Critical/High)
+    const defaultPriority = TASK_PRIORITIES[0]?.value || 'medium';
     const defaultAssigneeId = projectMembers[0]?.id || '';
 
-    // Form States - task থাকলে সেই ডেটা দিয়ে ইনিশিয়ালাইজ করা
+    // Form States - task থাকলে সেই ডেটা দিয়ে ইনিশিয়ালাইজ করা
     const [title, setTitle] = useState(task?.title || '');
     const [description, setDescription] = useState(task?.description || '');
-    // Note: Priority values are strings ('low', 'medium', etc.)
     const [priority, setPriority] = useState(task?.priority || defaultPriority);
+    // ✅ Change 1: Due Date is a crucial field in Task Management
     const [dueDate, setDueDate] = useState(task?.dueDate || '');
-    // Assumes assigneeId is stored as a number/string ID
     const [assignedUser, setAssignedUser] = useState(task?.assigneeId || defaultAssigneeId);
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!title || !priority || !assignedUser) {
-            alert('Title, Priority, and Assignee are required.');
+        // ✅ Change 2: Due Date validation যোগ করা হলো
+        if (!title || !priority || !assignedUser || !dueDate) {
+            alert('Title, Priority, Assignee, and Due Date are required.');
             return;
         }
 
@@ -54,7 +54,6 @@ function TaskModal({ task, onClose, onSave, projectMembers = mockUsers }) {
         const taskData = {
             title,
             description,
-            // Ensure priority is the value (e.g., 'high')
             priority,
             dueDate,
             assigneeId: Number(assignedUser),
@@ -64,7 +63,6 @@ function TaskModal({ task, onClose, onSave, projectMembers = mockUsers }) {
         // If Editing, include the task ID and existing status
         if (isEditing) {
             taskData.id = task.id;
-            // Status is generally not edited via this form, but via TaskStatusDropdown
             taskData.status = task.status;
         }
 
@@ -135,15 +133,18 @@ function TaskModal({ task, onClose, onSave, projectMembers = mockUsers }) {
                                 ))}
                             </select>
                         </div>
+
                         {/* Due Date (FR-10) */}
                         <div>
+                            {/* ✅ Change 3: Required Asterisk যোগ করা হলো */}
                             <label className="block text-sm font-medium text-gray-700">
-                                Due Date
+                                Due Date <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="date"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
+                                required // ✅ Change 4: Required Attribute যোগ করা হলো
                                 className="mt-1 w-full border border-gray-300 rounded-md p-2"
                             />
                         </div>

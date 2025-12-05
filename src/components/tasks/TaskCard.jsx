@@ -1,8 +1,8 @@
-import { Clock, Edit, Flag, User } from 'lucide-react';
+import { Clock, Edit, Flag, MessageCircle, User } from 'lucide-react'; // ✅ MessageCircle যোগ করা হলো
 
-import TaskStatusDropdown from './TaskStatusDropdown'; // Adjusted import path
+import TaskStatusDropdown from './TaskStatusDropdown';
 
-// প্রায়োরিটি স্টাইল ম্যাপ
+// প্রায়োরিটি স্টাইল ম্যাপ
 const priorityStyles = {
     critical: 'bg-red-100 text-red-700 border-red-200',
     high: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -10,7 +10,8 @@ const priorityStyles = {
     low: 'bg-green-100 text-green-700 border-green-200'
 };
 
-function TaskCard({ task, onEdit, onStatusChange }) {
+// ✅ onCommentClick prop যোগ করা হলো
+function TaskCard({ task, onEdit, onStatusChange, onCommentClick }) {
     const priorityInfo = priorityStyles[task.priority] || priorityStyles.medium;
 
     // Due Date Color Logic
@@ -58,12 +59,11 @@ function TaskCard({ task, onEdit, onStatusChange }) {
                 </span>
             </div>
 
-            {/* Footer: Assignee and Due Date */}
+            {/* Footer: Assignee, Comment Button, and Due Date */}
             <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 {/* Assignee Information (FIXED OVERFLOW) */}
                 <div className="flex items-center text-sm text-gray-700 w-1/2 min-w-0">
                     <User className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
-                    {/* ✅ FIX: w-full min-w-0, overflow-hidden, and truncate ensure the name stays within bounds */}
                     <span
                         className="w-full truncate overflow-hidden whitespace-nowrap"
                         title={task.assignee}
@@ -72,10 +72,26 @@ function TaskCard({ task, onEdit, onStatusChange }) {
                     </span>
                 </div>
 
-                {/* Due Date */}
-                <div className="flex items-center text-sm ml-2">
-                    <Clock className={`w-4 h-4 mr-1 ${dueDateClass}`} />
-                    <span className={`text-xs ${dueDateClass}`}>{task.dueDate}</span>
+                {/* Comment Button (FR-14) & Due Date Group */}
+                <div className="flex items-center space-x-3">
+                    {/* ✅ Comment Button */}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation(); // Prevents card-level click events from interfering
+                            onCommentClick(task);
+                        }}
+                        className="text-gray-400 hover:text-indigo-600 transition p-1 rounded hover:bg-indigo-50"
+                        title="View Comments"
+                    >
+                        <MessageCircle className="w-4 h-4" />
+                    </button>
+
+                    {/* Due Date */}
+                    <div className="flex items-center text-sm">
+                        <Clock className={`w-4 h-4 mr-1 ${dueDateClass}`} />
+                        <span className={`text-xs ${dueDateClass}`}>{task.dueDate}</span>
+                    </div>
                 </div>
             </div>
         </div>
