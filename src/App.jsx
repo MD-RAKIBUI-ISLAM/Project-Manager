@@ -14,7 +14,7 @@ import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import NotFound from './pages/NotFound';
-import NotificationListPage from './pages/Notifications/NotificationListPage';
+import NotificationListPage from './pages/Notifications/NotificationListPage'; // ✅ NotificationListPage আমদানি করা হলো
 import ProjectDetailsPage from './pages/Projects/ProjectDetailsPage';
 import ProjectListPage from './pages/Projects/ProjectListPage';
 import { USER_ROLES } from './utils/constants';
@@ -68,6 +68,7 @@ function App() {
                     <Route path="/projects" element={<ProjectListPage />} />
                     <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
 
+                    {/* ✅ ADDED: Notification List Page Route */}
                     <Route path="/notifications" element={<NotificationListPage />} />
 
                     {/* 2.3. Admin Routes (Role Protection Check) */}
