@@ -248,7 +248,7 @@ function ProjectDashboard() {
             </div>
 
             {/* --- 1. Top Metrics Grid (Fix: XL grid adjusted to 4) --- */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
                 {' '}
                 {/* ✅ xl:grid-cols-5 থেকে xl:grid-cols-4 করা হয়েছে */}
                 {/* 1. Total Assigned Tasks */}

@@ -1,6 +1,6 @@
-// src/context/AuthContext.jsx (FINAL Working FIX - Role Persistence & Consistency)
+// src/context/AuthContext.jsx (FINAL Working FIX - Persistence added)
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 // FIX 1: Mock Data-এর সাথে সামঞ্জস্য রেখে USER_ROLES কনস্ট্যান্ট ডিফাইন করা হলো
 export const USER_ROLES = {
@@ -11,7 +11,6 @@ export const USER_ROLES = {
 };
 
 // --- INITIAL MOCK USER DATA ---
-// ... (এখানে INITIAL_MOCK_USERS ডেটা অপরিবর্তিত আছে, যা ছোট হাতের রোল ব্যবহার করে)
 const INITIAL_MOCK_USERS = [
     {
         id: 1,
@@ -38,6 +37,23 @@ const INITIAL_MOCK_USERS = [
         password: 'password'
     }
 ];
+
+// ✅ FIX: localStorage থেকে ইউজারদের ডেটা লোড করা হলো
+const getInitialMockUsers = () => {
+    const storedUsers = localStorage.getItem('mockUsers');
+    if (storedUsers) {
+        try {
+            // যদি localStorage এ থাকে, তবে সেটি ব্যবহার করা হবে
+            return JSON.parse(storedUsers);
+        } catch (e) {
+            console.error('Failed to parse mockUsers from localStorage', e);
+            // ত্রুটি হলে ডিফল্ট ডেটা ব্যবহার করা হবে
+            return INITIAL_MOCK_USERS;
+        }
+    }
+    // যদি localStorage এ না থাকে, তবে ডিফল্ট ডেটা ব্যবহার করা হবে
+    return INITIAL_MOCK_USERS;
+};
 // --- END INITIAL MOCK USER DATA ---
 
 export const AuthContext = createContext();
@@ -67,7 +83,13 @@ const getInitialState = () => {
 export function AuthProvider({ children }) {
     // 1. STATE
     const [state, setState] = useState(getInitialState);
-    const [mockUsers, setMockUsers] = useState(INITIAL_MOCK_USERS);
+    // ✅ FIX: mockUsers স্টেট getInitialMockUsers থেকে ডেটা নেবে
+    const [mockUsers, setMockUsers] = useState(getInitialMockUsers);
+
+    // ✅ FIX: mockUsers পরিবর্তিত হলেই localStorage এ সেভ করা হবে (Persistence)
+    useEffect(() => {
+        localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+    }, [mockUsers]);
 
     // ... Stable Setters (অপরিবর্তিত) ...
     const setLoading = useCallback((val) => setState((s) => ({ ...s, loading: val })), []);
@@ -85,13 +107,14 @@ export function AuthProvider({ children }) {
         [updateState]
     );
 
-    // 3. CORE AUTHENTICATION FUNCTIONS (login/logout অপরিবর্তিত)
+    // 3. CORE AUTHENTICATION FUNCTIONS
     const login = useCallback(
         async (email, password) => {
             setLoading(true);
             setAuthError(null);
             await new Promise((resolve) => setTimeout(resolve, 800));
 
+            // ✅ FIX: Persistence যোগ হওয়ায় mockUsers এ নতুন ইউজারদের ডেটা থাকবে
             const foundUser = mockUsers.find(
                 (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
             );
@@ -115,9 +138,8 @@ export function AuthProvider({ children }) {
         [setLoading, setAuthError, mockUsers, updateState]
     );
 
-    // FIX 2: register ফাংশনের চূড়ান্ত সংশোধন
+    // FIX 2: register ফাংশন (সাধারণ ইউজারদের জন্য) - সফল হলে ইউজার লগইন হয়ে যায়
     const register = useCallback(
-        // role parameter যোগ করা হলো এবং ডিফল্ট রোল MEMBER সেট করা হলো।
         async (name, email, password, role = USER_ROLES.MEMBER) => {
             setLoading(true);
             setAuthError(null);
@@ -134,23 +156,21 @@ export function AuthProvider({ children }) {
                 return { success: false, error };
             }
 
-            // মক ইউজার লিস্টে নতুন ইউজারকে যোগ করা হলো
             const newUser = {
                 id: mockUsers.length + 1,
                 name,
                 email,
-                role: role.toLowerCase(), // <<--- রোলটিকে সেট করা হলো
+                role: role.toLowerCase(),
                 token: `mock-token-${mockUsers.length + 1}`,
                 password
             };
 
             setMockUsers((prev) => [...prev, newUser]);
 
-            // লগইন ডেটা লোকাল স্টোরেজে সেভ করা হলো
+            // সফল রেজিস্ট্রেশনের পর ইউজারকে লগইন করানো
             localStorage.setItem('access_token', newUser.token);
             localStorage.setItem('user', JSON.stringify(newUser));
 
-            // স্টেট আপডেট করা হলো
             updateState({
                 user: newUser,
                 isAuthenticated: true,
@@ -173,11 +193,49 @@ export function AuthProvider({ children }) {
         });
     }, [setState]);
 
-    // ... (User Management Functions অপরিবর্তিত) ...
+    // ------------------------------------------
+    // FIX 4: Admin-এর জন্য নতুন ইউজার তৈরির ফাংশন (Admin সেশন পরিবর্তন করবে না)
+    const adminCreateUser = useCallback(
+        async (name, email, password, role) => {
+            setLoading(true);
+            setAuthError(null);
+            await new Promise((resolve) => setTimeout(resolve, 800));
+
+            const isEmailTaken = mockUsers.some(
+                (u) => u.email.toLowerCase() === email.toLowerCase()
+            );
+
+            if (isEmailTaken) {
+                setLoading(false);
+                return { success: false, error: 'User with this email already exists.' };
+            }
+
+            // মক ইউজার লিস্টে নতুন ইউজারকে যোগ করা হলো
+            const newUser = {
+                id: mockUsers.length + 1,
+                name,
+                email,
+                role: role.toLowerCase(),
+                token: `mock-token-${mockUsers.length + 1}`,
+                password
+            };
+
+            setMockUsers((prev) => [...prev, newUser]);
+
+            // Admin সেশন বজায় রাখার জন্য এখানে কোনো লগইন লজিক ব্যবহার করা হয়নি।
+
+            setLoading(false);
+            return { success: true, user: newUser };
+        },
+        [setLoading, setAuthError, mockUsers, setMockUsers]
+    );
+    // ------------------------------------------
+
+    // ... (User Management Functions) ...
 
     const fetchUsers = useCallback(async () => {
         await new Promise((resolve) => setTimeout(resolve, 300));
-        return mockUsers.map(({ password, ...user }) => user);
+        return mockUsers.map(({ password, ...user }) => ({ ...user, id: String(user.id) }));
     }, [mockUsers]);
 
     const updateUser = useCallback(
@@ -189,13 +247,13 @@ export function AuthProvider({ children }) {
             let updatedUser = null;
 
             setMockUsers((prevUsers) => {
-                const index = prevUsers.findIndex((u) => u.id === userId);
+                const index = prevUsers.findIndex((u) => String(u.id) === String(userId));
                 if (index === -1) return prevUsers;
 
                 updatedUser = {
                     ...prevUsers[index],
                     ...newDetails,
-                    role: newDetails.role || prevUsers[index].role
+                    role: (newDetails.role || prevUsers[index].role).toLowerCase()
                 };
 
                 const newUsers = [...prevUsers];
@@ -206,7 +264,7 @@ export function AuthProvider({ children }) {
             setLoading(false);
 
             if (updatedUser) {
-                if (state.user?.id === userId) {
+                if (String(state.user?.id) === String(userId)) {
                     updateProfile(updatedUser);
                 }
                 return { success: true, user: updatedUser };
@@ -219,11 +277,10 @@ export function AuthProvider({ children }) {
 
     const deleteUser = useCallback(
         async (userId) => {
-            // setLoading(true);
             setAuthError(null);
             await new Promise((resolve) => setTimeout(resolve, 800));
 
-            setMockUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
+            setMockUsers((prevUsers) => prevUsers.filter((u) => String(u.id) !== String(userId)));
 
             setLoading(false);
             return { success: true };
@@ -243,8 +300,9 @@ export function AuthProvider({ children }) {
             fetchUsers,
             updateUser,
             deleteUser,
+            adminCreateUser,
 
-            // FIX 3: Role Checkers-এ কনস্ট্যান্ট ব্যবহার
+            // Role Checkers-এ কনস্ট্যান্ট ব্যবহার
             isAdmin: state.user?.role === USER_ROLES.ADMIN,
             isManager: state.user?.role === USER_ROLES.PROJECT_MANAGER,
             hasRole: (roles) => {
@@ -253,7 +311,7 @@ export function AuthProvider({ children }) {
                 return roleArray.includes(state.user.role);
             }
         }),
-        [state, login, register, logout, fetchUsers, updateUser, deleteUser]
+        [state, login, register, logout, fetchUsers, updateUser, deleteUser, adminCreateUser]
     );
 
     return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>;

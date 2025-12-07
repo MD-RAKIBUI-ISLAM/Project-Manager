@@ -1,3 +1,5 @@
+// src/pages/Admin/UserManagementPage.jsx
+
 import { AlertTriangle, CheckCircle, Edit, Plus, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -26,7 +28,15 @@ function StatusIndicator({ status }) {
 
 // --- Main Component ---
 function UserManagementPage() {
-    const { user, loading: authLoading, fetchUsers, updateUser, deleteUser, register } = useAuth();
+    // ✅ FIX 2: register-এর বদলে adminCreateUser-কে আমদানি করা হয়েছে
+    const {
+        user,
+        loading: authLoading,
+        fetchUsers,
+        updateUser,
+        deleteUser,
+        adminCreateUser
+    } = useAuth();
 
     const [users, setUsers] = useState([]);
     const [isFetching, setIsFetching] = useState(true);
@@ -42,6 +52,9 @@ function UserManagementPage() {
     // Success Notification State
     const [successMessage, setSuccessMessage] = useState(null);
 
+    // ✅ FIX 1: Error Notification State (NEW)
+    const [errorMessage, setErrorMessage] = useState(null);
+
     // 3. ইউজার ডেটা ফেচ করার লজিক
     const loadUsers = useCallback(async () => {
         setIsFetching(true);
@@ -49,6 +62,7 @@ function UserManagementPage() {
             const fetchedUsers = await fetchUsers();
             setUsers(fetchedUsers.map((u) => ({ ...u, status: 'Active' }))); // Mock status for display
         } catch (error) {
+            setErrorMessage('Failed to fetch users data.');
             console.error('Failed to fetch users:', error);
         } finally {
             setIsFetching(false);
@@ -60,29 +74,45 @@ function UserManagementPage() {
         loadUsers();
     }, [loadUsers]);
 
-    // Success Message Auto-Hide Logic (Linter fixed)
+    // Success Message Auto-Hide Logic
     useEffect(() => {
         if (successMessage) {
             const timer = setTimeout(() => {
                 setSuccessMessage(null);
-            }, 3000); // 3 সেকেন্ড পর মেসেজ হাইড হবে
+            }, 3000);
 
-            // যখন successMessage থাকে, তখন ক্লিনার ফাংশন রিটার্ন করো
             return () => clearTimeout(timer);
         }
-
-        // ✅ Linter fix: স্পষ্ট করে undefined রিটার্ন করা হলো
         return undefined;
     }, [successMessage]);
+
+    // ✅ FIX 1: Error Message Auto-Hide Logic (NEW)
+    useEffect(() => {
+        if (errorMessage) {
+            const timer = setTimeout(() => {
+                setErrorMessage(null);
+            }, 5000);
+
+            return () => clearTimeout(timer);
+        }
+        return undefined;
+    }, [errorMessage]);
 
     // 4. Role Change (Role Select Dropdown)
     const handleRoleChange = useCallback(
         async (userId, newRole) => {
+            setErrorMessage(null); // Clear previous messages
+            setSuccessMessage(null);
+
             const result = await updateUser(userId, { role: newRole });
             if (result.success) {
                 await loadUsers();
+                setSuccessMessage(`Role for user ID **${userId}** updated to **${newRole}**.`);
             } else {
-                alert(`Error updating role: ${result.error}`);
+                // alert(`Error updating role: ${result.error}`); // ❌ REMOVED
+                setErrorMessage(
+                    `Error updating role: ${result.error || 'An unknown error occurred.'}`
+                );
             }
         },
         [updateUser, loadUsers]
@@ -91,14 +121,19 @@ function UserManagementPage() {
     // 5. User Deletion - Initial Click (Sets Confirmation State)
     const handleDelete = useCallback((userId, userName) => {
         setConfirmDelete({ id: userId, name: userName });
+        setErrorMessage(null); // Clear errors when confirming
+        setSuccessMessage(null); // Clear success when confirming
     }, []);
 
-    // 5.1. User Deletion - Confirmation Logic (No Page Reload, No Loading State)
+    // 5.1. User Deletion - Confirmation Logic
     const confirmDeletion = useCallback(async () => {
         if (!confirmDelete) return;
 
         const userId = confirmDelete.id;
         const userName = confirmDelete.name;
+
+        setErrorMessage(null);
+        setSuccessMessage(null);
 
         // ডিলিট অপারেশন শুরু
         const result = await deleteUser(userId);
@@ -108,11 +143,12 @@ function UserManagementPage() {
             setUsers((currentUsers) => currentUsers.filter((u) => u.id !== userId));
 
             // ✅ inline notification সেট করা হয়েছে
-            setSuccessMessage(`User ${userName} successfully deleted.`);
-
-            // [গুরুত্বপূর্ণ]: loadUsers() কল করা হচ্ছে না, তাই লোডিং স্টেট ট্রিগার হবে না।
+            setSuccessMessage(`User **${userName}** successfully deleted.`);
         } else {
-            alert(`Error deleting user: ${result.error}`); // Error still uses alert for simplicity
+            // alert(`Error deleting user: ${result.error}`); // ❌ REMOVED
+            setErrorMessage(
+                `Error deleting user **${userName}**: ${result.error || 'An unknown error occurred.'}`
+            );
         }
 
         // কনফার্মেশন স্টেট রিসেট করা
@@ -127,33 +163,48 @@ function UserManagementPage() {
     // 6. Add New User
     const handleAddUser = useCallback(
         async ({ name, email, role, password }) => {
-            console.log('Attempting to register user with role:', role);
-            const result = await register(name, email, password, role);
+            setErrorMessage(null); // Clear previous errors
+            setSuccessMessage(null); // Clear previous success
+
+            console.log('Attempting to create user with role:', role);
+
+            // ✅ FIX 2: adminCreateUser ব্যবহার করা হয়েছে
+            const result = await adminCreateUser(name, email, password, role);
+
             if (result.success) {
                 await loadUsers();
                 setIsAddModalOpen(false);
-                alert(
-                    `User ${name} added successfully with role: ${role}. 
-                     You are now logged in as this user. Please ensure the sidebar is visible.`
-                );
+                // ✅ FIX 1: inline success message ব্যবহার করা হয়েছে
+                setSuccessMessage(`User **${name}** successfully added as a **${role}**.`);
             } else {
-                alert(`Error adding user: ${result.error}`);
+                setIsAddModalOpen(false);
+                // ✅ FIX 1: inline error message ব্যবহার করা হয়েছে
+                setErrorMessage(
+                    `Error adding user: ${result.error || 'An unknown error occurred.'}`
+                );
             }
         },
-        [register, loadUsers]
+        [adminCreateUser, loadUsers] // Dependency updated
     );
 
     // 7. Edit Existing User
     const handleEditUser = useCallback(
         async (updatedUserData) => {
+            setErrorMessage(null);
+            setSuccessMessage(null);
+
             const result = await updateUser(updatedUserData.id, updatedUserData);
             if (result.success) {
                 await loadUsers();
                 setIsEditModalOpen(false);
                 setUserToEdit(null);
-                alert(`User ${updatedUserData.name} updated successfully!`);
+                // alert(`User ${updatedUserData.name} updated successfully!`); // ❌ REMOVED
+                setSuccessMessage(`User **${updatedUserData.name}** updated successfully!`);
             } else {
-                alert(`Error updating user: ${result.error}`);
+                // alert(`Error updating user: ${result.error}`); // ❌ REMOVED
+                setErrorMessage(
+                    `Error updating user **${updatedUserData.name}**: ${result.error || 'An unknown error occurred.'}`
+                );
             }
         },
         [updateUser, loadUsers]
@@ -163,6 +214,8 @@ function UserManagementPage() {
     const handleEditClick = (selectedUser) => {
         setUserToEdit(selectedUser);
         setIsEditModalOpen(true);
+        setErrorMessage(null); // Clear previous messages
+        setSuccessMessage(null);
     };
 
     // Modal close helper function for Edit Modal
@@ -212,7 +265,11 @@ function UserManagementPage() {
                     variant="primary"
                     size="md"
                     className="space-x-2"
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => {
+                        setIsAddModalOpen(true);
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                    }}
                     disabled={authLoading}
                 >
                     <Plus className="h-5 w-5" />
@@ -220,7 +277,7 @@ function UserManagementPage() {
                 </Button>
             </div>
 
-            {/* Warning for demonstration */}
+            {/* Warning for demonstration (unchanged) */}
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md flex items-start space-x-3">
                 <AlertTriangle className="h-6 w-6 text-yellow-500 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-yellow-800">
@@ -236,12 +293,23 @@ function UserManagementPage() {
                 <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-md flex items-center space-x-3">
                     <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
                     <p className="text-sm font-medium text-green-800">
-                        <strong>Successfully Deleted.</strong> {successMessage}
+                        <strong>Operation Success.</strong> {successMessage}
                     </p>
                 </div>
             )}
 
-            {/* --- Inline Confirmation Bar --- */}
+            {/* --- ✅ FIX 1: Error Notification Bar (NEW) --- */}
+            {errorMessage && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md flex items-center space-x-3">
+                    <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
+                    <p className="text-sm font-medium text-red-800">
+                        <strong>Operation Failed.</strong> {errorMessage}
+                    </p>
+                </div>
+            )}
+            {/* ------------------------------- */}
+
+            {/* --- Inline Confirmation Bar (unchanged) --- */}
             {confirmDelete && (
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md flex justify-between items-center">
                     <p className="text-sm font-medium text-red-800 flex items-center space-x-2">
@@ -265,7 +333,7 @@ function UserManagementPage() {
             )}
             {/* ------------------------------- */}
 
-            {/* User Table */}
+            {/* User Table (rest of the table logic is unchanged) */}
             <div className="bg-white shadow-xl rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -301,7 +369,7 @@ function UserManagementPage() {
                                         value={u.role}
                                         onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                         className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        disabled={authLoading}
+                                        disabled={authLoading || u.email === user?.email} // নিজে নিজের রোল পরিবর্তন করতে পারবে না
                                     >
                                         {Object.values(USER_ROLES).map((role) => (
                                             <option key={role} value={role}>
@@ -337,6 +405,7 @@ function UserManagementPage() {
                                         onClick={() => handleDelete(u.id, u.name)}
                                         className="text-red-600 hover:text-red-900 p-2 ml-2"
                                         title="Delete User"
+                                        // এডমিন নিজেকে ডিলিট করতে পারবে না
                                         disabled={
                                             u.email === user?.email || authLoading || confirmDelete
                                         }
