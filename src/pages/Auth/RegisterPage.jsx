@@ -3,12 +3,12 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router-dom'; // ✅ useNavigate আমদানি করা হলো
+import { Link, useNavigate } from 'react-router-dom';
 import * as yup from 'yup';
 
 import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
-import { useAuth } from '../../context/AuthContext'; // <--- useAuth hook আমদানি করা হলো
+import { useAuth } from '../../context/AuthContext';
 
 // Validation Schema
 const registerSchema = yup.object().shape({
@@ -26,15 +26,12 @@ const registerSchema = yup.object().shape({
 });
 
 function RegisterPage() {
-    // Note: আমরা এখন Context-এর loading/error ব্যবহার না করে, registration flow-এর জন্য
-    // local state ব্যবহার করছি, যাতে Registration সফল হলে Success message দেখানো যায়।
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [success, setSuccess] = React.useState(false);
 
-    // AuthContext থেকে register ফাংশন এবং context error আনা হলো
     const { register: authRegister, authError } = useAuth();
-    const navigate = useNavigate(); // ✅ useNavigate ইনিশিয়ালাইজ করা হলো
+    const navigate = useNavigate();
 
     const {
         register,
@@ -50,15 +47,12 @@ function RegisterPage() {
         setSuccess(false);
 
         try {
-            // ✅ FIX: authRegister ফাংশনে তিনটি আর্গুমেন্ট (full_name, email, password) পাস করা হলো
-            const result = await authRegister(data.full_name, data.email, data.password);
+            // ✅ চূড়ান্ত ফিক্স: authRegister ফাংশনে data.role আর্গুমেন্টটি পাস করা হলো।
+            const result = await authRegister(data.full_name, data.email, data.password, data.role);
 
             if (result && result.success) {
-                // রেজিস্ট্রেশন সফল হলে, ইউজারকে সরাসরি ড্যাশবোর্ডে নিয়ে যাওয়া হলো (যেমনটা AuthContext করে)
+                // রেজিস্ট্রেশন সফল হলে, ইউজারকে সরাসরি ড্যাশবোর্ডে নিয়ে যাওয়া হলো
                 navigate('/dashboard', { replace: true });
-
-                // OR যদি আপনি শুধু Success Message দেখাতে চান, তবে নিচের লাইন ব্যবহার করুন:
-                // setSuccess(true);
             } else {
                 // Mock API failure হলে Context থেকে আসা error বা default error দেখানো হলো
                 setError(
@@ -74,8 +68,6 @@ function RegisterPage() {
         }
     };
 
-    // Note: যেহেতু AuthContext স্বয়ংক্রিয়ভাবে সফল রেজিস্ট্রেশনের পর লগইন করে দেয়,
-    // তাই সফল হলে সরাসরি নেভিগেট করাই শ্রেয়। Success message-এর প্রয়োজন নেই।
     if (success) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
@@ -116,7 +108,7 @@ function RegisterPage() {
                     </p>
                 </div>
 
-                {(error || authError) && ( // Local error বা Context error দেখানো হলো
+                {(error || authError) && (
                     <div
                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-sm"
                         role="alert"
@@ -155,7 +147,7 @@ function RegisterPage() {
                             error={errors.password2}
                         />
                         <InputField
-                            label="Role (e.g., Member)"
+                            label="Role (e.g., admin, project_manager, member)"
                             name="role"
                             {...register('role')}
                             error={errors.role}

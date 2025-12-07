@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.jsx (Final Fix)
+// src/components/layout/Sidebar.jsx (FINAL FIX - Role Consistency)
 
 import {
     Briefcase,
@@ -11,16 +11,18 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../../context/AuthContext'; // .js এক্সটেনশন ব্যবহার করা হলো
+import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
+import { USER_ROLES } from '../../utils/constants'; // FIX 1: USER_ROLES কনস্ট্যান্ট আমদানি করা
 
-// --- Global Nav Links Data (সঠিকভাবে শেষ করা হয়েছে) ---
+// --- Global Nav Links Data ---
 const navLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Tasks', path: '/tasks', icon: ListTodo },
+    // requiredAdmin: true সেট করা আছে
     { name: 'User Management', path: '/admin/users', icon: Users, requiresAdmin: true }
-]; // <-- ✅ এখানে অ্যারেটি বন্ধ করা হয়েছে
+];
 
 // NavItem কম্পোনেন্ট
 function NavItem({ link, isAdmin, closeSidebar }) {
@@ -31,6 +33,7 @@ function NavItem({ link, isAdmin, closeSidebar }) {
         ? 'bg-indigo-600 text-white shadow-lg'
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 
+    // যদি লিঙ্কটি Admin অ্যাক্সেস দাবি করে এবং ইউজার Admin না হয়, তবে লিঙ্কটি রেন্ডার হবে না
     if (link.requiresAdmin && !isAdmin) {
         return null;
     }
@@ -46,17 +49,15 @@ function NavItem({ link, isAdmin, closeSidebar }) {
         </Link>
     );
 }
-// <-- NavItem ফাংশনের শেষে কোনো পরিবর্তন দরকার নেই
 
 // --- Sidebar কম্পোনেন্ট ---
 function Sidebar() {
     const { user } = useAuth();
     const { isSidebarOpen, closeSidebar } = useSidebar();
 
-    // Note: If you want both 'Admin' and 'Project Manager' roles to see the link,
-    // you should check if user?.role is 'Admin' or 'Project Manager'.
-    // For now, based on previous context, 'Project Manager' is considered the Admin role.
-    const isAdmin = user?.role === 'Project Manager' || user?.role === 'Admin'; // Admin check শক্তিশালী করা হলো
+    // FIX 2: isAdmin চেকটিকে শুধুমাত্র USER_ROLES.ADMIN এর জন্য সেট করা হলো।
+    // এটি /admin/users রুটের সুরক্ষা নীতির সাথে সামঞ্জস্যপূর্ণ।
+    const isAdmin = user?.role === USER_ROLES.ADMIN;
 
     return (
         <>

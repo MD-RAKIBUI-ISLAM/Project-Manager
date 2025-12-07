@@ -1,23 +1,24 @@
-// src/pages/Admin/AddUserModal.jsx (NEW FILE)
+// src/pages/Admin/AddUserModal.jsx (MODIFIED - Added Password Field)
 
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import Button from '../../components/common/Button'; // Assuming you have this Button component
-import { USER_ROLES } from '../../utils/constants'; // USER_ROLES অবশ্যই ইমপোর্ট করতে হবে
+import Button from '../../components/common/Button';
+import { USER_ROLES } from '../../utils/constants';
 
 function AddUserModal({ onClose, onSave }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    // Default role হিসেবে Developer সেট করা হলো
-    const [role, setRole] = useState(USER_ROLES.DEVELOPER);
+    const [password, setPassword] = useState(''); // <--- NEW: পাসওয়ার্ড স্টেট যোগ করা হলো
+    const [role, setRole] = useState(USER_ROLES.MEMBER); // ডিফল্ট 'MEMBER' সেট করা হলো
 
     const handleSubmit = (e) => {
         e.preventDefault();
         // Validation check
-        if (!name || !email) return;
+        if (!name || !email || !password) return; // <--- Validation-এ password যোগ করা হলো
 
-        onSave({ name, email, role });
+        // onSave-এ password পাঠানো হচ্ছে
+        onSave({ name, email, role, password }); // <--- পরিবর্তন: password যুক্ত করা হলো
     };
 
     return (
@@ -38,6 +39,7 @@ function AddUserModal({ onClose, onSave }) {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Name Field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Full Name</label>
                         <input
@@ -48,6 +50,7 @@ function AddUserModal({ onClose, onSave }) {
                             required
                         />
                     </div>
+                    {/* Email Field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Email</label>
                         <input
@@ -58,6 +61,21 @@ function AddUserModal({ onClose, onSave }) {
                             required
                         />
                     </div>
+                    {/* NEW: Password Field */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                            Password (Initial)
+                        </label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-1 w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            required
+                        />
+                    </div>
+
+                    {/* Role Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Role</label>
                         <select
@@ -65,7 +83,6 @@ function AddUserModal({ onClose, onSave }) {
                             onChange={(e) => setRole(e.target.value)}
                             className="mt-1 w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
                         >
-                            {/* USER_ROLES constants থেকে রোল অপশনগুলো রেন্ডার করা */}
                             {Object.values(USER_ROLES).map((r) => (
                                 <option key={r} value={r}>
                                     {r}

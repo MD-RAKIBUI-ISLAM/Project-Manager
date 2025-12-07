@@ -7,7 +7,7 @@
  * ----------------------------------------------------
  */
 export const USER_ROLES = {
-    ADMIN: 'Admin',
+    ADMIN: 'admin',
     PROJECT_MANAGER: 'Project Manager',
     DEVELOPER: 'Developer',
     VIEWER: 'Viewer'

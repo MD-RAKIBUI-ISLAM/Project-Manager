@@ -1,14 +1,16 @@
-// src/App.jsx (FINAL Working Version with AuthProvider Integration)
+// src/App.jsx (FINAL FIX: Routing Focussed)
 
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-// Layout
+import PrivateRoute from './components/auth/PrivateRoute';
+// Component Imports
 import AppLayout from './components/layout/AppLayout';
 import TaskBoard from './components/tasks/TaskBoard';
-// AUTHENTICATION FIX: AuthProvider এবং useAuth-কে context থেকে আমদানি করা হলো
-import { AuthProvider, useAuth } from './context/AuthContext';
+// Context Imports
+import { AuthProvider } from './context/AuthContext';
+import { RoleProvider } from './context/RoleContext';
+// Page Imports
 import UserManagementPage from './pages/Admin/UserManagementPage';
-// Page Components
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
@@ -18,59 +20,54 @@ import ProjectDetailsPage from './pages/Projects/ProjectDetailsPage';
 import ProjectListPage from './pages/Projects/ProjectListPage';
 import { USER_ROLES } from './utils/constants';
 
-// --- PrivateRoute কম্পোনেন্ট (Authentication and Role Check) ---
-function PrivateRoute({ allowedRoles }) {
-    const { isAuthenticated, hasRole, loading } = useAuth();
-
-    if (loading) {
-        return <div className="flex justify-center items-center h-screen text-lg">Loading...</div>;
-    }
-
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
-    }
-
-    if (allowedRoles && !hasRole(allowedRoles)) {
-        return <Navigate to="/dashboard" replace />;
-    }
-
-    return <Outlet />;
-}
-
 function App() {
     return (
-        // MAIN FIX: সম্পূর্ণ অ্যাপ্লিকেশনকে AuthProvider দ্বারা মুড়ে দেওয়া হলো
         <AuthProvider>
-            <Routes>
-                {/* --- 1. Public Routes --- */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
+            <RoleProvider>
+                <Routes>
+                    {/* --- 1. Public Routes --- */}
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                {/* Default Route */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    {/* --- 2. General Protected Routes Wrapper (AppLayout) --- */}
+                    {/* এই রুটটি AppLayout এবং PrivateRoute দ্বারা সুরক্ষিত। */}
+                    <Route
+                        path="/"
+                        element={
+                            <PrivateRoute>
+                                <AppLayout />
+                            </PrivateRoute>
+                        }
+                    >
+                        {/* Nested Routes inside AppLayout (Accessible by all logged-in users) */}
+                        <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="tasks" element={<TaskBoard />} />
+                        <Route path="projects" element={<ProjectListPage />} />
+                        <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
+                        <Route path="notifications" element={<NotificationListPage />} />
 
-                {/* --- 2. Protected Routes (AppLayout এর মধ্যে Nesting) --- */}
+                        {/* 🛡️ 2.1: Admin Routes (Nested, Role Check) */}
+                        {/* FIX: User Management কে এখন সাধারণ Protected Route এর ভেতরে নেস্টেড করা হলো। 
+                            পাথ থেকে স্লাশ (/) সরানো হয়েছে।
+                        */}
+                        <Route
+                            path="admin/users" // ✅ ফিক্সড: এখন এটি AppLayout এর ভেতরে কাজ করবে
+                            element={
+                                <PrivateRoute requiredRole={USER_ROLES.ADMIN}>
+                                    <UserManagementPage />
+                                </PrivateRoute>
+                            }
+                        />
 
-                {/* Main Protection (Authentication Check) */}
-                <Route element={<PrivateRoute />}>
-                    <Route element={<AppLayout />}>
-                        {/* Dashboard and General Routes (All logged-in users) */}
-                        <Route path="/dashboard" element={<DashboardPage />} />
-                        <Route path="/tasks" element={<TaskBoard />} />
-                        <Route path="/projects" element={<ProjectListPage />} />
-                        <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
-                        <Route path="/notifications" element={<NotificationListPage />} />
-
-                        {/* Admin Routes (Role Protection Check) */}
-                        <Route element={<PrivateRoute allowedRoles={[USER_ROLES.ADMIN]} />}>
-                            <Route path="/admin/users" element={<UserManagementPage />} />
-                        </Route>
+                        {/* 404 Route within the protected layout */}
+                        <Route path="*" element={<NotFound />} />
                     </Route>
-                </Route>
 
-                {/* 3. 404 Not Found Page */}
-                <Route path="*" element={<NotFound />} />
-            </Routes>
+                    {/* 3. Global 404 Not Found Page (যদি কোনো রুটই না মেলে) */}
+                    <Route path="*" element={<NotFound />} />
+                </Routes>
+            </RoleProvider>
         </AuthProvider>
     );
 }

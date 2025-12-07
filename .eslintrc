@@ -20,6 +20,7 @@
     "plugins": ["react", "react-hooks", "prettier", "jsx-a11y", "simple-import-sort"],
     "extends": ["airbnb", "airbnb/hooks", "plugin:jsx-a11y/recommended", "prettier"],
     "rules": {
+        "no-promise-executor-return": 0,
         "no-nested-ternary": 0,
         "no-alert": 0,
         "jsx-a11y/label-has-associated-control": 0,
