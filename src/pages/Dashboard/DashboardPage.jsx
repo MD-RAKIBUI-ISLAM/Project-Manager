@@ -33,8 +33,8 @@ const MOCK_DASHBOARD_DATA = {
         { id: 3, user: 'Eve A.', action: 'commented on Task #104', time: '3h ago' }
     ],
     recentComments: [
-        { id: 1, user: 'Bob J.', action: 'Task #301 এ মন্তব্য করেছেন', time: '10m ago' },
-        { id: 2, user: 'You', action: 'Task #201 এ @Alice কে উল্লেখ করেছেন', time: '4h ago' }
+        { id: 1, user: 'Bob J.', action: 'Commented on Task #301', time: '10m ago' },
+        { id: 2, user: 'You', action: 'Mentioned @Alice in Task #201', time: '4h ago' }
     ],
     assignedProjects: [
         {
@@ -62,7 +62,7 @@ const MOCK_DASHBOARD_DATA = {
 };
 // --- END MOCK DATA ---
 
-// Helper Component: Metric Card (অপরিবর্তিত)
+// Helper Component: Metric Card (Unchanged)
 function MetricCard({ title, value, icon: Icon, colorClass, description }) {
     return (
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md border-b-4 border-t-2 border-gray-100 transition duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-xl cursor-pointer">
@@ -78,7 +78,7 @@ function MetricCard({ title, value, icon: Icon, colorClass, description }) {
     );
 }
 
-// Helper Component: Project Progress Card (অপরিবর্তিত)
+// Helper Component: Project Progress Card (Unchanged)
 function ProjectProgressCard({ project }) {
     const progressColor =
         project.progress === 100
@@ -119,29 +119,29 @@ function ProjectProgressCard({ project }) {
     );
 }
 
-// Advanced Filtering Component Placeholder (অপরিবর্তিত)
+// Advanced Filtering Component Placeholder (Unchanged)
 function AdvancedFilters() {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
             {/* Filter 1: Status */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                <option>স্থিতি: সব</option>
-                <option>সম্পন্ন</option>
-                <option>কাজ চলছে</option>
-                <option>শুরু হবে</option>
+                <option>Status: All</option>
+                <option>Completed</option>
+                <option>In Progress</option>
+                <option>To Do</option>
             </select>
 
             {/* Filter 2: Priority */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                <option>অগ্রাধিকার: সব</option>
-                <option>উচ্চ</option>
-                <option>মাঝারি</option>
-                <option>নিম্ন</option>
+                <option>Priority: All</option>
+                <option>High</option>
+                <option>Medium</option>
+                <option>Low</option>
             </select>
 
             {/* Filter 3: Assignee */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                <option>অ্যাসাইনি: আমি</option>
+                <option>Assignee: Me</option>
                 <option>Bob J.</option>
                 <option>Eve A.</option>
             </select>
@@ -150,7 +150,7 @@ function AdvancedFilters() {
             <input
                 type="date"
                 className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="ডেডলাইন অনুযায়ী"
+                placeholder="By Deadline"
             />
         </div>
     );
@@ -177,7 +177,7 @@ function ProjectDashboard() {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <Loader className="w-8 h-8 animate-spin text-indigo-500" />
-                <span className="ml-3 text-lg font-medium text-indigo-600">ডাটা লোড হচ্ছে...</span>
+                <span className="ml-3 text-lg font-medium text-indigo-600">Data is loading...</span>
             </div>
         );
     }
@@ -191,34 +191,34 @@ function ProjectDashboard() {
 
     return (
         <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans">
-            {/* 🚀 পরিবর্তিত অংশ: Header শুধুমাত্র Welcome Message রাখবে এবং full width নেবে */}
+            {/* 🚀 Modified Section: Header will only keep the Welcome Message and take full width */}
             <div className="mb-6 md:mb-8">
                 {/* Header and Welcome Message (Full Width) */}
                 <div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                        👋 স্বাগতম, {user.name || user.email}
+                        👋 Welcome, {user.name || user.email}
                     </h1>
                     <p className="text-gray-600 mt-2 text-base md:text-lg">
-                        আজকের কাজের ওভারভিউ এবং প্রকল্পের স্থিতি দেখুন। (Role:{' '}
+                        View today's work overview and project status. (Role:{' '}
                         <span className="font-semibold text-indigo-600">{user.role}</span>)
                     </p>
                 </div>
             </div>
-            {/* 🚀 পরিবর্তিত অংশ সমাপ্ত */}
+            {/* 🚀 Modified Section End */}
 
             {/* --- Global Search and Filtering (FR-15 Implementation) --- */}
             <div className="mb-8 p-4 bg-white rounded-2xl shadow-xl border border-indigo-100">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    {/* Search Input (অপরিবর্তিত) */}
+                    {/* Search Input (Unchanged) */}
                     <div className="relative w-full sm:flex-grow">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="প্রোজেক্ট বা কাজের নাম দিয়ে খুঁজুন..."
+                            placeholder="Search by project or task name..."
                             className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
                         />
                     </div>
-                    {/* Filter Toggle Button (অপরিবর্তিত) */}
+                    {/* Filter Toggle Button (Unchanged) */}
                     <button
                         type="button"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -230,11 +230,11 @@ function ProjectDashboard() {
                     >
                         {showAdvancedFilters ? (
                             <>
-                                <Filter className="w-5 h-5 mr-2" /> ফিল্টার লুকান
+                                <Filter className="w-5 h-5 mr-2" /> Hide Filters
                             </>
                         ) : (
                             <>
-                                <Filter className="w-5 h-5 mr-2" /> উন্নত ফিল্টার
+                                <Filter className="w-5 h-5 mr-2" /> Advanced Filters
                             </>
                         )}
                         <ChevronDown
@@ -243,86 +243,86 @@ function ProjectDashboard() {
                     </button>
                 </div>
 
-                {/* Advanced Filter Area (Collapsible) (অপরিবর্তিত) */}
+                {/* Advanced Filter Area (Collapsible) (Unchanged) */}
                 {showAdvancedFilters && <AdvancedFilters />}
             </div>
 
             {/* --- 1. Top Metrics Grid (Fix: XL grid adjusted to 4) --- */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
                 {' '}
-                {/* ✅ xl:grid-cols-5 থেকে xl:grid-cols-4 করা হয়েছে */}
+                {/* ✅ xl:grid-cols-5 to xl:grid-cols-4 adjusted */}
                 {/* 1. Total Assigned Tasks */}
                 <MetricCard
-                    title="মোট অ্যাসাইন করা কাজ"
+                    title="Total Assigned Tasks"
                     value={data.totalAssignedTasks}
                     icon={ListChecks}
                     colorClass="text-indigo-600"
-                    description="আপনার মোট কতগুলি কাজ বাকি আছে"
+                    description="Total tasks currently assigned to you"
                 />
                 {/* 2. Completed Tasks */}
                 <MetricCard
-                    title="সম্পন্ন হয়েছে"
+                    title="Completed"
                     value={data.completedTasks}
                     icon={CheckCircle}
                     colorClass="text-green-600"
-                    description="আজ পর্যন্ত সম্পন্ন করা টাস্ক"
+                    description="Tasks completed to date"
                 />
                 {/* 3. In Progress Tasks */}
                 <MetricCard
-                    title="কাজ চলছে"
+                    title="In Progress"
                     value={data.inProgressTasks}
                     icon={Activity}
                     colorClass="text-sky-600"
-                    description="বর্তমানে সক্রিয় টাস্ক"
+                    description="Currently active tasks"
                 />
                 {/* 4. Completion Rate */}
                 <MetricCard
-                    title="সম্পন্নতার হার"
+                    title="Completion Rate"
                     value={`${completionRate}%`}
                     icon={TrendingUp}
                     colorClass="text-purple-600"
-                    description="মোট কাজের তুলনায় সম্পন্ন হওয়া টাস্কের অনুপাত"
+                    description="Ratio of completed to total tasks"
                 />
-                {/* 5. Projects Overview (Manager/Admin View) - এটি এখন পঞ্চম কার্ড হিসেবে থাকবে যদি রোল ম্যানেজার/অ্যাডমিন হয় */}
+                {/* 5. Projects Overview (Manager/Admin View) - This remains the fifth card if the role is Manager/Admin */}
                 {isManagerOrAdmin && (
                     <MetricCard
-                        title="সক্রিয় প্রকল্প"
+                        title="Active Projects"
                         value={data.activeProjects}
                         icon={Briefcase}
                         colorClass="text-amber-600"
-                        description="বর্তমানে চলমান মোট প্রকল্প সংখ্যা"
+                        description="Total number of currently running projects"
                     />
                 )}
             </div>
 
-            {/* --- 2. Main Content Layout (অপরিবর্তিত) --- */}
+            {/* --- 2. Main Content Layout (Unchanged) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Column 1: Critical and Assigned Tasks (2/3 width on desktop) */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Critical Tasks Card (অপরিবর্তিত) */}
+                    {/* Critical Tasks Card (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl border-l-4 border-red-500">
                         <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center border-b pb-2">
-                            <Clock className="w-5 h-5 mr-2" /> ডেডলাইন কাছাকাছি (Upcoming Deadlines)
+                            <Clock className="w-5 h-5 mr-2" /> Upcoming Deadlines
                         </h2>
                         {data.dueDateApproaching > 0 ? (
                             <p className="text-red-500 font-medium">
-                                আপনার{' '}
+                                Your{' '}
                                 <span className="font-extrabold text-2xl">
                                     {data.dueDateApproaching}
                                 </span>{' '}
-                                টি কাজের ডেডলাইন এই সপ্তাহে শেষ হতে চলেছে। এখনই দেখুন!
+                                tasks are due this week. Check now!
                             </p>
                         ) : (
                             <p className="text-gray-500 italic">
-                                এই মুহূর্তে কোনো কাজ ডেডলাইন মিস করার ঝুঁকিতে নেই।
+                                No tasks are currently at risk of missing their deadline.
                             </p>
                         )}
                     </div>
 
-                    {/* Assigned Projects Quick Access (অপরিবর্তিত) */}
+                    {/* Assigned Projects Quick Access (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
-                            <Target className="w-5 h-5 mr-2 text-indigo-500" /> আপনার প্রকল্পসমূহ
+                            <Target className="w-5 h-5 mr-2 text-indigo-500" /> Your Projects
                         </h2>
                         <div className="space-y-3">
                             {data.assignedProjects.map((project) => (
@@ -334,11 +334,11 @@ function ProjectDashboard() {
 
                 {/* Column 2: Recent Comments & Activity Log (1/3 width on desktop) */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Recent Comments/Mentions (FR-18 Placeholder) (অপরিবর্তিত) */}
+                    {/* Recent Comments/Mentions (FR-18 Placeholder) (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-64 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
-                            <MessageSquare className="w-5 h-5 mr-2 text-red-500" /> সাম্প্রতিক
-                            কমেন্টস/উল্লেখ
+                            <MessageSquare className="w-5 h-5 mr-2 text-red-500" /> Recent
+                            Comments/Mentions
                         </h2>
                         <ul className="space-y-3">
                             {data.recentComments.length > 0 ? (
@@ -360,16 +360,16 @@ function ProjectDashboard() {
                                 ))
                             ) : (
                                 <p className="text-gray-500 italic text-sm">
-                                    আর কোনো নতুন মন্তব্য বা উল্লেখ নেই।
+                                    No new comments or mentions available.
                                 </p>
                             )}
                         </ul>
                     </div>
 
-                    {/* Existing Recent Activity Log (FR-7) (অপরিবর্তিত) */}
+                    {/* Existing Recent Activity Log (FR-7) (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-96 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
-                            <Activity className="w-5 h-5 mr-2 text-sky-500" /> সাম্প্রতিক কার্যকলাপ
+                            <Activity className="w-5 h-5 mr-2 text-sky-500" /> Recent Activity
                             (Activity Log)
                         </h2>
                         <ul className="space-y-4">
