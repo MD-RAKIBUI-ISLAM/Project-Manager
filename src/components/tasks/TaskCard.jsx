@@ -1,4 +1,6 @@
-import { Clock, Edit, Flag, MessageCircle, User } from 'lucide-react'; // ✅ MessageCircle যোগ করা হলো
+// src/components/tasks/TaskCard.jsx
+
+import { Briefcase, Clock, Edit, Flag, MessageCircle, User } from 'lucide-react'; // ✅ Briefcase যোগ করা হলো
 
 import TaskStatusDropdown from './TaskStatusDropdown';
 
@@ -18,6 +20,9 @@ function TaskCard({ task, onEdit, onStatusChange, onCommentClick }) {
     const isOverdue = new Date(task.dueDate) < new Date() && task.status !== 'done';
     const dueDateClass = isOverdue ? 'text-red-600 font-semibold' : 'text-gray-600';
 
+    // Fallback for projectName if it somehow wasn't set during creation
+    const projectNameDisplay = task.projectName || 'No Project Assigned';
+
     return (
         <div
             className="bg-white p-4 rounded-lg shadow-md border-l-4 border-indigo-500 hover:shadow-lg transition duration-200 cursor-grab"
@@ -36,6 +41,15 @@ function TaskCard({ task, onEdit, onStatusChange, onCommentClick }) {
                 >
                     <Edit className="w-4 h-4" />
                 </button>
+            </div>
+
+            {/* ✅ Project Name Display (New) */}
+            <div
+                className="flex items-center text-xs text-gray-600 mb-2"
+                title={projectNameDisplay}
+            >
+                <Briefcase className="w-3 h-3 mr-1 text-indigo-500 flex-shrink-0" />
+                <span className="font-medium truncate">{projectNameDisplay}</span>
             </div>
 
             {/* Description (Truncated) */}

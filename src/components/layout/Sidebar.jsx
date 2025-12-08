@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
+import TaskMasterLogo from '../../assets/sidebarlogo2.jpg';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { USER_ROLES } from '../../utils/constants'; // FIX 1: USER_ROLES কনস্ট্যান্ট আমদানি করা
@@ -66,15 +67,22 @@ function Sidebar() {
                         transition-transform duration-300 ease-in-out lg:static lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 shadow-xl lg:shadow-none`}
             >
                 {/* Header / Close Button for Mobile */}
-                <div className="p-6 flex items-center justify-between border-b border-gray-200 lg:justify-center">
-                    <h1 className="text-2xl font-bold text-indigo-700">TaskMaster</h1>
+                <div className="flex items-center justify-between border-b border-gray-200 lg:justify-center">
+                    <div className="flex items-center">
+                        <img
+                            src={TaskMasterLogo}
+                            alt="TaskMaster Logo"
+                            className="h-20 w-20 rounded-full" // লোগোর আকার সেট করা হলো
+                        />
+                        <h1 className="text-2xl font-bold text-indigo-700">TaskMaster</h1>
+                    </div>{' '}
                     <button
                         type="button"
                         onClick={closeSidebar}
                         className="text-gray-500 lg:hidden hover:text-red-600"
                         aria-label="Close Menu"
                     >
-                        <X className="h-6 w-6" />
+                        <X className="h-10 w-10 pr-4" />
                     </button>
                 </div>
 
