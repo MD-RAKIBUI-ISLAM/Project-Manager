@@ -1,14 +1,9 @@
-// src/context/AuthContext.jsx (FINAL Working FIX - Persistence added)
+// src/context/AuthContext.jsx (FINAL Working FIX - Role State Added)
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-// FIX 1: Mock Data-এর সাথে সামঞ্জস্য রেখে USER_ROLES কনস্ট্যান্ট ডিফাইন করা হলো
-export const USER_ROLES = {
-    ADMIN: 'admin',
-    PROJECT_MANAGER: 'project_manager',
-    MEMBER: 'member',
-    DEVELOPER: 'member' // ধরে নিচ্ছি Developer রোল Member এর সমতুল্য
-};
+// ✅ FIX: USER_ROLES আমদানি করা হলো
+import { USER_ROLES } from '../utils/constants';
 
 // --- INITIAL MOCK USER DATA ---
 const INITIAL_MOCK_USERS = [
@@ -27,15 +22,15 @@ const INITIAL_MOCK_USERS = [
         role: 'project_manager',
         token: 'mock-manager-token',
         password: 'password'
-    },
-    {
-        id: 3,
-        name: 'Charlie Brown',
-        email: 'member@project.com',
-        role: 'member',
-        token: 'mock-member-token',
-        password: 'password'
     }
+    // {
+    //     id: 3,
+    //     name: 'Charlie Brown',
+    //     email: 'member@project.com',
+    //     role: 'member',
+    //     token: 'mock-member-token',
+    //     password: 'password'
+    // }
 ];
 
 // ✅ FIX: localStorage থেকে ইউজারদের ডেটা লোড করা হলো
@@ -58,6 +53,7 @@ const getInitialMockUsers = () => {
 
 export const AuthContext = createContext();
 
+// ✅ FIX: getInitialState এ 'role' কে explicit state হিসেবে রাখা হলো
 const getInitialState = () => {
     const token = localStorage.getItem('access_token');
     const userString = localStorage.getItem('user');
@@ -72,11 +68,15 @@ const getInitialState = () => {
         }
     }
 
+    // Explicitly derive and store role
+    const role = user?.role || null; // <--- ADDED LOGIC
+
     return {
         isAuthenticated: !!token && !!user,
         user,
         loading: false,
-        authError: null
+        authError: null,
+        role // <--- ADDED: role is now a top-level state
     };
 };
 
@@ -96,12 +96,16 @@ export function AuthProvider({ children }) {
     const setAuthError = useCallback((err) => setState((s) => ({ ...s, authError: err })), []);
     const updateState = useCallback((updates) => setState((s) => ({ ...s, ...updates })), []);
 
+    // ✅ FIX: updateProfile এ 'role' কেও আপডেট করা হলো
     const updateProfile = useCallback(
         (newUserData) => {
             updateState((s) => {
                 const updatedUser = { ...s.user, ...newUserData };
                 localStorage.setItem('user', JSON.stringify(updatedUser));
-                return { user: updatedUser };
+                return {
+                    user: updatedUser,
+                    role: updatedUser.role // Ensure role state is updated
+                };
             });
         },
         [updateState]
@@ -109,12 +113,13 @@ export function AuthProvider({ children }) {
 
     // 3. CORE AUTHENTICATION FUNCTIONS
     const login = useCallback(
-        async (email, password) => {
+        // ✅ পরিবর্তন: login ফাংশন এখন তিনটি প্যারামিটারই গ্রহণ করবে (name, email, password)
+        async (name, email, password) => {
             setLoading(true);
             setAuthError(null);
             await new Promise((resolve) => setTimeout(resolve, 800));
 
-            // ✅ FIX: Persistence যোগ হওয়ায় mockUsers এ নতুন ইউজারদের ডেটা থাকবে
+            // ✅ ফিক্স: ইউজার খোঁজার লজিকটি শুধুমাত্র email এবং password মিলিয়েই কাজ করবে
             const foundUser = mockUsers.find(
                 (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
             );
@@ -123,13 +128,16 @@ export function AuthProvider({ children }) {
                 localStorage.setItem('access_token', foundUser.token);
                 localStorage.setItem('user', JSON.stringify(foundUser));
 
+                // ✅ FIX: login এ 'role' কে explicit set করা হলো
                 updateState({
                     user: foundUser,
                     isAuthenticated: true,
-                    loading: false
+                    loading: false,
+                    role: foundUser.role // Explicitly set role
                 });
                 return { success: true };
             }
+            // ত্রুটির মেসেজটি আগের মতো:
             const error = 'Invalid email or password.';
             setAuthError(error);
             setLoading(false);
@@ -171,10 +179,12 @@ export function AuthProvider({ children }) {
             localStorage.setItem('access_token', newUser.token);
             localStorage.setItem('user', JSON.stringify(newUser));
 
+            // ✅ FIX: register এ 'role' কে explicit set করা হলো
             updateState({
                 user: newUser,
                 isAuthenticated: true,
-                loading: false
+                loading: false,
+                role: newUser.role // Explicitly set role
             });
             return { success: true };
         },
@@ -185,11 +195,13 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
 
+        // ✅ FIX: logout এ 'role' কে null করা হলো
         setState({
             isAuthenticated: false,
             user: null,
             loading: false,
-            authError: null
+            authError: null,
+            role: null // Explicitly set role to null
         });
     }, [setState]);
 
@@ -265,7 +277,7 @@ export function AuthProvider({ children }) {
 
             if (updatedUser) {
                 if (String(state.user?.id) === String(userId)) {
-                    updateProfile(updatedUser);
+                    updateProfile(updatedUser); // This calls the fixed updateProfile
                 }
                 return { success: true, user: updatedUser };
             }
@@ -291,7 +303,7 @@ export function AuthProvider({ children }) {
     // 5. CONTEXT VALUE
     const authContextValue = useMemo(
         () => ({
-            ...state,
+            ...state, // state now includes the explicit 'role'
             login,
             register,
             logout,
@@ -303,12 +315,13 @@ export function AuthProvider({ children }) {
             adminCreateUser,
 
             // Role Checkers-এ কনস্ট্যান্ট ব্যবহার
-            isAdmin: state.user?.role === USER_ROLES.ADMIN,
-            isManager: state.user?.role === USER_ROLES.PROJECT_MANAGER,
+            isAdmin: state.role === USER_ROLES.ADMIN, // Uses state.role
+            isManager: state.role === USER_ROLES.PROJECT_MANAGER, // Uses state.role
+            // hasRole ফাংশনটি এখন contextValue-এর অংশ, যা ProjectDashboard-এ ত্রুটি দূর করবে।
             hasRole: (roles) => {
                 if (!state.user) return false;
                 const roleArray = Array.isArray(roles) ? roles : [roles];
-                return roleArray.includes(state.user.role);
+                return roleArray.includes(state.role); // Uses state.role
             }
         }),
         [state, login, register, logout, fetchUsers, updateUser, deleteUser, adminCreateUser]

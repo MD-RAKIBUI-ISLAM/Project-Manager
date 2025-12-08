@@ -1,4 +1,4 @@
-// src/pages/Auth/LoginPage.jsx (FINAL Working Version with Login Call Fix)
+// src/pages/Auth/LoginPage.jsx (FINAL Working Version with Name, Email, Password)
 
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
@@ -9,10 +9,11 @@ import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
 import { useAuth } from '../../context/AuthContext';
 
-// Validation Schema
+// ✅ পরিবর্তন #1: Validation Schema তে তিনটি ফিল্ড যোগ করা হলো
 const loginSchema = yup.object().shape({
-    email: yup.string().email('Invalid email address').required('Email is required'),
-    password: yup.string().required('Password is required')
+    name: yup.string().required('Name is required'), // নতুন: নাম
+    email: yup.string().email('Invalid email address').required('Email is required'), // ইমেল
+    password: yup.string().required('Password is required') // পাসওয়ার্ড
 });
 
 function LoginPage() {
@@ -29,8 +30,8 @@ function LoginPage() {
 
     // ফর্ম সাবমিশন হ্যান্ডলার
     const onSubmit = async (data) => {
-        // ✅ ফিক্স: login ফাংশনে email এবং password আলাদাভাবে পাস করা হলো
-        const result = await login(data.email, data.password);
+        // ✅ পরিবর্তন #2: login ফাংশনে name, email, এবং password তিনটিই পাস করা হলো
+        const result = await login(data.name, data.email, data.password);
 
         // result অবজেক্টের মধ্যে success প্রপার্টিটি চেক করা হলো
         if (result && result.success) {
@@ -75,6 +76,17 @@ function LoginPage() {
                 {/* Login Form */}
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
                     <div className="space-y-4">
+                        {/* ✅ নতুন ফিল্ড: Name Input Field */}
+                        <InputField
+                            label="Name"
+                            name="name"
+                            type="text"
+                            placeholder="Your Full Name"
+                            {...register('name')}
+                            error={errors.name}
+                        />
+
+                        {/* Email Input Field */}
                         <InputField
                             label="Email address"
                             name="email"
@@ -84,6 +96,7 @@ function LoginPage() {
                             error={errors.email}
                         />
 
+                        {/* Password Input Field */}
                         <InputField
                             label="Password"
                             name="password"

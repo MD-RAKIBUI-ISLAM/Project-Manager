@@ -3,88 +3,24 @@
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-// আপনার অন্যান্য কম্পোনেন্ট ইম্পোর্ট
+import { useAuth } from '../../context/AuthContext';
+import {
+    initialTasks,
+    mockProjectMembers,
+    PRIORITY_ORDER,
+    TASK_STATUSES,
+    USER_ROLES
+} from '../../utils/constants';
 import Button from '../common/Button';
 import CommentSection from './CommentSection';
 import TaskCard from './TaskCard';
 import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
-// ধরে নেওয়া হলো এই ফাইলগুলি utils/constants.js এ সংজ্ঞায়িত:
-const TASK_STATUSES = [
-    { label: 'BackLog', value: 'back_log', color: 'text-gray-700' },
-    { label: 'In Progress', value: 'in_progress', color: 'text-blue-700' },
-    { label: 'Blocked', value: 'blocked', color: 'text-red-700' },
-    { label: 'Done', value: 'done', color: 'text-green-700' }
-];
-
-// --- MOCK DATA ---
-const initialTasks = [
-    {
-        id: 1,
-        projectId: 1,
-        title: 'Setup React Frontend',
-        description: 'Initialize project structure with Tailwind CSS and routing.',
-        priority: 'high',
-        dueDate: '2025-12-05',
-        assigneeId: 1,
-        assignee: 'Alice Smith',
-        status: 'done'
-    },
-    {
-        id: 2,
-        projectId: 1,
-        title: 'Implement Auth Pages',
-        description: 'Create Login and Register pages (FR-1). Ensure validation.',
-        priority: 'critical',
-        dueDate: '2025-12-10',
-        assigneeId: 2,
-        assignee: 'Bob Johnson',
-        status: 'in_progress'
-    },
-    {
-        id: 3,
-        projectId: 2,
-        title: 'Design Task API Model',
-        description: 'Define Task and Project models in Django (FR-10).',
-        priority: 'medium',
-        dueDate: '2025-12-15',
-        assigneeId: 1,
-        assignee: 'Alice Smith',
-        status: 'back_log'
-    },
-    {
-        id: 4,
-        projectId: 2,
-        title: 'Fix CSS bug on Sidebar',
-        description: 'Sidebar is overlapping content on mobile views. Needs investigation.',
-        priority: 'low',
-        dueDate: '2025-12-12',
-        assigneeId: 2,
-        assignee: 'Bob Johnson',
-        status: 'blocked'
-    },
-    {
-        id: 5,
-        projectId: 1,
-        title: 'Write Task Management Documentation',
-        description: 'Prepare documentation for Task Management module.',
-        priority: 'medium',
-        dueDate: '2025-12-20',
-        assigneeId: 3,
-        assignee: 'Eve Adams',
-        status: 'back_log'
-    }
-];
-const mockProjectMembers = [
-    { id: 1, name: 'Alice Smith' },
-    { id: 2, name: 'Bob Johnson' },
-    { id: 3, name: 'Eve Adams' }
-];
-const PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
-// --- END MOCK DATA ---
-
 function TaskBoard() {
+    // role এখন AuthContext-এর explicit state থেকে আসবে, যা খুবই নির্ভরযোগ্য।
+    const { user, role } = useAuth();
+
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState(null);
@@ -132,28 +68,53 @@ function TaskBoard() {
         setTaskToEdit(null);
     };
 
-    // Edit Modal ওপেন করার ফাংশন
     const handleEditTask = (task) => {
         setTaskToEdit(task);
         setIsModalOpen(true);
     };
 
-    // Comment Handler
     const handleOpenComments = (task) => {
         setTaskForComments(task);
         setIsCommentsOpen(true);
     };
 
-    // Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো (FR-15)
+    // Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো
     const filteredAndSortedTasks = useMemo(() => {
+        // যদি user বা role লোড না হয়, তবে sorting করে সব টাস্ক দেখান
+        if (!user || !role) {
+            return tasks.sort((a, b) => {
+                if (filters.sortBy === 'dueDate') return new Date(a.dueDate) - new Date(b.dueDate);
+                return 0;
+            });
+        }
+
         let filtered = tasks;
 
-        // Filtering Logic
+        // --- রোল-ভিত্তিক ফিল্টারিং লজিক ---
+
+        // ১. যদি ইউজার 'admin' বা 'project_manager' হয় (সবাইকে দেখান)
+        const isManagerOrAdmin = role === USER_ROLES.ADMIN || role === USER_ROLES.PROJECT_MANAGER;
+
+        // ২. যদি Manager বা Admin না হয় (শুধু নিজেকে অ্যাসাইন করা কাজ দেখান)
+        if (!isManagerOrAdmin) {
+            // ✅ FIX: ডেটা টাইপ সামঞ্জস্য করার জন্য String() ব্যবহার করা হলো।
+            const currentUserId = String(user.id);
+
+            filtered = filtered.filter(
+                (t) =>
+                    // Task-এর assigneeId-ও String-এ রূপান্তর করে তুলনা করা হলো
+                    String(t.assigneeId) === currentUserId
+            );
+        }
+        // --- শেষ রোল-ভিত্তিক ফিল্টারিং লজিক ---
+
+        // Filtering Logic (Existing Logic)
         if (filters.priority) {
             filtered = filtered.filter((t) => t.priority === filters.priority);
         }
         if (filters.assigneeId) {
-            filtered = filtered.filter((t) => t.assigneeId === Number(filters.assigneeId));
+            // assigneeId ফিল্টারটিও type-safe করা হলো
+            filtered = filtered.filter((t) => String(t.assigneeId) === String(filters.assigneeId));
         }
         if (filters.searchTerm) {
             const lowerCaseSearch = filters.searchTerm.toLowerCase();
@@ -179,7 +140,7 @@ function TaskBoard() {
 
             return comparison * sortOrderMultiplier;
         });
-    }, [tasks, filters]);
+    }, [tasks, filters, user, role]);
 
     const getTasksByStatus = (statusValue) =>
         filteredAndSortedTasks.filter((t) => t.status === statusValue);
@@ -212,9 +173,7 @@ function TaskBoard() {
                 />
             </div>
 
-            {/* ✅ চূড়ান্ত ফিক্স ২: Kanban Board Layout (Responsive)
-                - এই কন্টেইনারে কোনো স্ক্রল ক্লাস নেই।
-            */}
+            {/* Kanban Board Layout */}
             <div className="flex flex-col space-y-4 pb-4 lg:flex-row lg:space-y-0 lg:space-x-2 lg:flex-grow lg:flex-nowrap">
                 {TASK_STATUSES.map((statusObject) => (
                     <div
@@ -224,7 +183,7 @@ function TaskBoard() {
                         {/* Column Header (Sticky) */}
                         <div className="sticky top-0 bg-gray-100 p-4 border-b border-gray-300 z-10 rounded-t-xl">
                             <h2
-                                className={`text-lg font-bold flex justify-between items-center ${statusObject.color || 'text-gray-700'}`}
+                                className={`text-lg font-bold flex justify-between items-center ${statusObject.tailwindColor || 'text-gray-700'}`}
                             >
                                 <span>{statusObject.label}</span>
                                 <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
