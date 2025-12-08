@@ -12,7 +12,7 @@ import TaskModal from './TaskModal';
 
 // ধরে নেওয়া হলো এই ফাইলগুলি utils/constants.js এ সংজ্ঞায়িত:
 const TASK_STATUSES = [
-    { label: 'To Do', value: 'to_do', color: 'text-gray-700' },
+    { label: 'BackLog', value: 'back_log', color: 'text-gray-700' },
     { label: 'In Progress', value: 'in_progress', color: 'text-blue-700' },
     { label: 'Blocked', value: 'blocked', color: 'text-red-700' },
     { label: 'Done', value: 'done', color: 'text-green-700' }
@@ -51,7 +51,7 @@ const initialTasks = [
         dueDate: '2025-12-15',
         assigneeId: 1,
         assignee: 'Alice Smith',
-        status: 'to_do'
+        status: 'back_log'
     },
     {
         id: 4,
@@ -73,7 +73,7 @@ const initialTasks = [
         dueDate: '2025-12-20',
         assigneeId: 3,
         assignee: 'Eve Adams',
-        status: 'to_do'
+        status: 'back_log'
     }
 ];
 const mockProjectMembers = [
@@ -123,7 +123,7 @@ function TaskBoard() {
                 ...taskData,
                 id: newId,
                 projectId: 1,
-                status: 'to_do',
+                status: 'back_log',
                 assignee
             };
             setTasks((prevTasks) => [...prevTasks, newTask]);
@@ -185,8 +185,6 @@ function TaskBoard() {
         filteredAndSortedTasks.filter((t) => t.status === statusValue);
 
     return (
-        // ✅ ফিক্স ১: `flex-grow` নিশ্চিত করে এটি প্যারেন্ট কন্টেইনারের পুরো উপলব্ধ প্রস্থ ব্যবহার করবে।
-        // `overflow-x-hidden` কোনো অবাঞ্ছিত ওভারফ্লো আটকায়।
         <div className="py-6 flex-grow flex flex-col overflow-x-hidden">
             {/* Header: px-6 */}
             <div className="flex justify-between items-center border-b px-6 pb-4 mb-4 flex-shrink-0">
@@ -221,9 +219,6 @@ function TaskBoard() {
                 {TASK_STATUSES.map((statusObject) => (
                     <div
                         key={statusObject.value}
-                        // ✅ চূড়ান্ত ফিক্স ৩: `lg:min-w-72` সরিয়ে দেওয়া হয়েছে।
-                        // কলামগুলি এখন `flex-1` দ্বারা সমানভাবে তাদের প্যারেন্ট কন্টেইনারের প্রস্থ ভাগ করে নেবে,
-                        // ফলে তারা প্যারেন্টের মধ্যে ফিট হয়ে যাবে এবং ওভারফ্লো হবে না।
                         className="w-full lg:flex-1 lg:flex-shrink bg-gray-100 rounded-xl shadow-md border border-gray-200 overflow-y-auto transition duration-300 hover:shadow-lg"
                     >
                         {/* Column Header (Sticky) */}

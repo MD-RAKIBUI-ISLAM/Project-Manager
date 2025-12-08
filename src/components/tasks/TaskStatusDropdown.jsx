@@ -5,7 +5,7 @@ import { TASK_STATUSES } from '../../utils/constants';
 
 // স্ট্যাটাসের রঙ এবং আইকন ম্যাপ
 const statusStyles = {
-    to_do: { icon: Clock, color: 'text-gray-600 bg-gray-100', dot: 'bg-gray-500' },
+    back_log: { icon: Clock, color: 'text-gray-600 bg-gray-100', dot: 'bg-gray-500' },
     in_progress: { icon: PauseCircle, color: 'text-blue-600 bg-blue-100', dot: 'bg-blue-500' },
     blocked: { icon: XCircle, color: 'text-red-600 bg-red-100', dot: 'bg-red-500' },
     done: { icon: CheckCircle, color: 'text-green-600 bg-green-100', dot: 'bg-green-500' }
@@ -14,7 +14,7 @@ const statusStyles = {
 // স্ট্যাটাস পরিবর্তনের জন্য ড্রপডাউন কম্পোনেন্ট
 function TaskStatusDropdown({ currentStatus, taskId, onStatusChange }) {
     const [isOpen, setIsOpen] = useState(false);
-    const statusInfo = statusStyles[currentStatus] || statusStyles.to_do;
+    const statusInfo = statusStyles[currentStatus] || statusStyles.back_log;
     const Icon = statusInfo.icon;
 
     const handleSelectStatus = (newStatusValue) => {

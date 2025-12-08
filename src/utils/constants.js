@@ -21,7 +21,7 @@ export const USER_ROLES = {
  */
 // ✅ Note: এই ARRAY টি TaskStatusDropdown এবং Kanban Board তৈরির জন্য ব্যবহার হবে
 export const TASK_STATUSES = [
-    { value: 'to_do', label: 'To Do', color: 'bg-gray-400', tailwindColor: 'text-gray-700' },
+    { value: 'back_log', label: 'BackLog', color: 'bg-gray-400', tailwindColor: 'text-gray-700' },
     {
         value: 'in_progress',
         label: 'In Progress',
