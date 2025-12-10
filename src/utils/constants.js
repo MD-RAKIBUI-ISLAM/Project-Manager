@@ -1,14 +1,21 @@
 // src/utils/constants.js
 
 /**
+ * ====================================================
+ * PROJECT MANAGEMENT CONSTANTS
+ * Defines core roles, statuses, and mock data structures.
+ * ====================================================
+ */
+
+/**
  * ----------------------------------------------------
- * USER ROLES (Consistency maintained in Uppercase)
- * Defines the roles used for access control (NFR-5)
+ * USER ROLES (USER_ROLES)
+ * Defines the roles used for access control.
  * ----------------------------------------------------
  */
 export const USER_ROLES = {
     ADMIN: 'admin',
-    PROJECT_MANAGER: 'project_manager', // Matches mock data
+    PROJECT_MANAGER: 'project_manager',
     MEMBER: 'member',
     DEVELOPER: 'developer',
     VIEWER: 'viewer'
@@ -16,22 +23,21 @@ export const USER_ROLES = {
 
 /**
  * ----------------------------------------------------
- * PROJECT STATUSES (FR-8 & Filter Options)
- * Defines the available statuses for projects and filter options.
+ * PROJECT STATUSES (PROJECT_STATUSES)
+ * Defines the available statuses for projects.
  * ----------------------------------------------------
  */
 export const PROJECT_STATUSES = ['To Do', 'In Progress', 'Completed', 'On Hold'];
 
 /**
  * ----------------------------------------------------
- * MOCK AUTH HOOK DATA (Used in ProjectListPage's mock useAuth)
+ * MOCK AUTH DATA
+ * Mock user data used for authentication context and initial state.
  * ----------------------------------------------------
  */
 export const MOCK_CURRENT_USER = { name: 'Alice Smith', role: USER_ROLES.PROJECT_MANAGER };
 
-/**
- Intial mock users for authentication context
-*/
+// Initial mock users for simulating login/auth context
 export const INITIAL_MOCK_USERS = [
     {
         id: 1,
@@ -48,12 +54,29 @@ export const INITIAL_MOCK_USERS = [
         role: 'project_manager',
         token: 'mock-manager-token',
         password: 'password'
+    },
+    {
+        id: 3,
+        name: 'Chris Lee',
+        email: 'chris@project.com',
+        role: USER_ROLES.ADMIN,
+        token: 'mock-chris-token',
+        password: 'password'
+    },
+    {
+        id: 5,
+        name: 'Eve Adams',
+        email: 'eve@project.com',
+        role: USER_ROLES.MEMBER,
+        token: 'mock-eve-token',
+        password: 'password'
     }
 ];
+
 /**
  * ----------------------------------------------------
  * MOCK PROJECT MEMBERS (mockProjectMembers)
- * ProjectListPage এবং আপনার দেওয়া ডেটা একত্রিত করে তৈরি করা একক তালিকা।
+ * Used to map member IDs to full member objects (name, role) in ProjectDetailPage.
  * ----------------------------------------------------
  */
 export const mockProjectMembers = [
@@ -67,7 +90,8 @@ export const mockProjectMembers = [
 
 /**
  * ----------------------------------------------------
- * MOCK PROJECT DATA (INITIAL_PROJECTS) - (FR-1, FR-2)
+ * MOCK PROJECT DATA (INITIAL_PROJECTS)
+ * Contains project details, including manager IDs, member IDs, and task IDs.
  * ----------------------------------------------------
  */
 export const INITIAL_PROJECTS = [
@@ -75,25 +99,29 @@ export const INITIAL_PROJECTS = [
         id: 1,
         title: 'TaskMaster Core Backend',
         description:
-            'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3).',
+            'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3). This is a critical infrastructure project that underpins all frontend functionality. Key deliverables include API documentation and unit test coverage.',
         startDate: '2025-12-01',
         endDate: '2026-01-15',
         status: 'In Progress',
         progress: 45, // Percentage
-        manager: 'Alice Smith (PM)',
-        members: ['Alice Smith', 'Bob Johnson', 'Eve Adams']
+        manager: 'Alice Smith (PM)', // Legacy string field
+        managerId: 1, // ID used for mapping
+        members: [1, 2, 5], // IDs used for mapping
+        tasks: [1, 2, 5, 101, 102, 103, 104] // Associated Task IDs
     },
     {
         id: 2,
         title: 'Frontend UI/UX Implementation',
         description:
-            'Develop the React frontend using Tailwind CSS. Focus on responsive design (NFR-7) and Task Board (Kanban) implementation (FR-15).',
+            'Develop the React frontend using Tailwind CSS. Focus on responsive design (NFR-7) and Task Board (Kanban) implementation (FR-15). The user experience must be intuitive and fast.',
         startDate: '2025-11-25',
         endDate: '2026-01-30',
         status: 'In Progress',
         progress: 60,
         manager: 'Bob Johnson (PM)',
-        members: ['Alice Smith', 'Bob Johnson', 'Chris Lee']
+        managerId: 2,
+        members: [1, 2, 3],
+        tasks: [3, 4, 201, 202, 203]
     },
     {
         id: 3,
@@ -105,13 +133,16 @@ export const INITIAL_PROJECTS = [
         status: 'Completed',
         progress: 100,
         manager: 'Chris Lee (Admin)',
-        members: ['Chris Lee']
+        managerId: 3,
+        members: [3, 4],
+        tasks: []
     }
 ];
 
 /**
  * ----------------------------------------------------
- * TASK STATUSES (FR-12)
+ * TASK STATUSES (TASK_STATUSES)
+ * Defines statuses used for Task Management and Kanban columns (FR-12).
  * ----------------------------------------------------
  */
 export const TASK_STATUSES = [
@@ -128,7 +159,8 @@ export const TASK_STATUSES = [
 
 /**
  * ----------------------------------------------------
- * TASK PRIORITIES (FR-15 Filtering/Sorting & FR-10)
+ * TASK PRIORITIES (TASK_PRIORITIES)
+ * Defines priority levels for tasks (FR-10, FR-15).
  * ----------------------------------------------------
  */
 export const TASK_PRIORITIES = [
@@ -140,17 +172,20 @@ export const TASK_PRIORITIES = [
 
 /**
  * ----------------------------------------------------
- * PRIORITY SORT ORDER MAP (For quick use in useMemo)
+ * PRIORITY SORT ORDER MAP (PRIORITY_ORDER)
+ * Used for consistent sorting of tasks by priority.
  * ----------------------------------------------------
  */
 export const PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 
 /**
  * ----------------------------------------------------
- * MOCK TASK DATA (initialTasks)
+ * ALL MOCK TASK DATA (ALL_MOCK_TASKS)
+ * Consolidated list of all tasks used across the application.
  * ----------------------------------------------------
  */
-export const initialTasks = [
+export const ALL_MOCK_TASKS = [
+    // Task ID 1-5
     {
         id: 1,
         projectId: 1,
@@ -192,7 +227,7 @@ export const initialTasks = [
         priority: 'low',
         dueDate: '2025-12-12',
         assigneeId: 3,
-        assignee: 'Chris Lee', // Assignee updated to Chris Lee (ID 3)
+        assignee: 'Chris Lee',
         status: 'blocked'
     },
     {
@@ -202,22 +237,94 @@ export const initialTasks = [
         description: 'Prepare documentation for Task Management module.',
         priority: 'medium',
         dueDate: '2025-12-20',
-        assigneeId: 6, // Assignee updated to Charlie Brown (ID 6)
+        assigneeId: 6,
         assignee: 'Charlie Brown',
         status: 'back_log'
+    },
+    // Task ID 101-203
+    {
+        id: 101,
+        projectId: 1,
+        title: 'Setup Database Schemas',
+        status: 'done',
+        priority: 'high',
+        assignee: 'Alice Smith',
+        assigneeId: 1,
+        dueDate: '2025-12-10',
+        description: 'Completed basic schemas for user and project models.'
+    },
+    {
+        id: 102,
+        projectId: 1,
+        title: 'API for Project Creation',
+        status: 'in_progress',
+        priority: 'critical',
+        assignee: 'Bob Johnson',
+        assigneeId: 2,
+        dueDate: '2025-12-18',
+        description: 'Working on request validation and database interaction.'
+    },
+    {
+        id: 103,
+        projectId: 1,
+        title: 'Write Unit Tests for Auth',
+        status: 'to_do',
+        priority: 'medium',
+        assignee: 'Eve Adams',
+        assigneeId: 5,
+        dueDate: '2025-12-25',
+        description: ''
+    },
+    {
+        id: 104,
+        projectId: 1,
+        title: 'Integrate Email Notifications',
+        status: 'blocked',
+        priority: 'high',
+        assignee: 'Alice Smith',
+        assigneeId: 1,
+        dueDate: '2026-01-05',
+        description: 'Blocked waiting for SMTP server credentials.'
+    },
+    {
+        id: 201,
+        projectId: 2,
+        title: 'Design System Documentation',
+        status: 'done',
+        priority: 'low',
+        assignee: 'Bob Johnson',
+        assigneeId: 2,
+        dueDate: '2025-12-05',
+        description: 'Documented core component styles and usage.'
+    },
+    {
+        id: 202,
+        projectId: 2,
+        title: 'Develop TaskModal Component',
+        status: 'in_progress',
+        priority: 'medium',
+        assignee: 'David Kim',
+        assigneeId: 4,
+        dueDate: '2025-12-20',
+        description: 'Implementation in progress, focusing on form validation (FR-10).'
+    },
+    {
+        id: 203,
+        projectId: 2,
+        title: 'Setup Routing and Layout',
+        status: 'done',
+        priority: 'high',
+        assignee: 'Alice Smith',
+        assigneeId: 1,
+        dueDate: '2025-12-01',
+        description: 'Finished basic React Router setup and main app layout.'
     }
-];
-
-// ✅ NEW: Mock Projects Data for selection - এটি ProjectListPage.jsx-এর ডেটা স্ট্রাকচার অনুসরণ করে তৈরি
-export const MOCK_PROJECTS = [
-    { id: 1, title: 'TaskMaster Core Backend' },
-    { id: 2, title: 'Frontend UI/UX Implementation' },
-    { id: 3, title: 'Database Migration & Setup' }
 ];
 
 /**
  * ----------------------------------------------------
- * NAVIGATION LINKS (NFR-8)
+ * NAVIGATION LINKS (NAV_LINKS)
+ * Defines application navigation and access control based on roles.
  * ----------------------------------------------------
  */
 export const NAV_LINKS = [

@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 // ✅ পরিবর্তন: মক useAuth সরানো হলো, আসল useAuth ইমপোর্ট করা হলো
 import { useAuth } from '../../context/AuthContext';
 import {
-    initialTasks,
+    ALL_MOCK_TASKS as initialTasks,
     mockProjectMembers,
     PRIORITY_ORDER,
     TASK_STATUSES,

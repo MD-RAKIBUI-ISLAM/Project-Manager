@@ -6,27 +6,37 @@ import { useMemo, useState } from 'react';
 import Button from '../../components/common/Button';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
-// ✅ পরিবর্তন ১: আসল AuthContext থেকে useAuth ইমপোর্ট করা হলো
 import { useAuth } from '../../context/AuthContext';
-// ✅ পরিবর্তন ২: MOCK_CURRENT_USER ও মক useAuth হুক বাদ দেওয়া হলো
-import { INITIAL_PROJECTS, mockProjectMembers, PROJECT_STATUSES } from '../../utils/constants';
+// ✅ mockProjectMembers এবং USER_ROLES ইমপোর্ট করা হলো
+import {
+    INITIAL_PROJECTS,
+    mockProjectMembers,
+    PROJECT_STATUSES,
+    USER_ROLES
+} from '../../utils/constants';
+
+// ধাপ ১: মেম্বার লিস্ট থেকে আইডি-টু-নেম ম্যাপ তৈরি করা
+const userMap = mockProjectMembers.reduce((acc, user) => {
+    // আইডিকে স্ট্রিং এ কনভার্ট করা হচ্ছে যেন সকল ক্ষেত্রে সামঞ্জস্য থাকে
+    acc[String(user.id)] = user.name;
+    return acc;
+}, {});
 
 function ProjectListPage() {
-    // ✅ পরিবর্তন ৩: AuthContext থেকে user এবং hasRole প্রপার্টি নেওয়া হলো
     const { user, hasRole } = useAuth();
-
-    // ✅ পরিবর্তন ৪: canCreateProject এখন hasRole ফাংশন ব্যবহার করে চেক করছে
+    console.log('New User ID:', user?.id);
+    console.log('New User Role:', user?.role);
     const canCreateProject = hasRole(['admin', 'project_manager']);
 
-    // INITIAL_PROJECTS কন্সট্যান্ট থেকে ডেটা লোড করা হলো
     const [projects, setProjects] = useState(INITIAL_PROJECTS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [projectToEdit, setProjectToEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('All');
+
+    // ✅ পরিবর্তন: 'Assigned to me' ডিফল্ট ফিল্টার স্টেট
     const [filterAssignment, setFilterAssignment] = useState('Assigned to me');
 
     // FR-5 & FR-7: New Project Save/Edit Handler
@@ -45,8 +55,9 @@ function ProjectListPage() {
                 id: newId,
                 status: 'To Do',
                 progress: 0,
-                // user?.name এখন AuthContext থেকে আসছে
-                manager: `${user?.name || 'Current User'} (PM)`
+                manager: user?.name || 'Current User',
+                managerId: user?.id || null,
+                members: projectData.members || []
             };
             setProjects((prevProjects) => [...prevProjects, newProject]);
             console.log(`New Project ${newProject.title} created!`);
@@ -55,13 +66,13 @@ function ProjectListPage() {
         setProjectToEdit(null);
     };
 
-    // FR-7: Edit Project Handler (Opens Modal)
+    // ✅ handler: Edit Project Handler
     const handleEditProject = (project) => {
         setProjectToEdit(project);
         setIsModalOpen(true);
     };
 
-    // FR-7: Delete Project Handler (Custom Modal Placeholder)
+    // ✅ handler: Delete Project Handler
     const handleDeleteProject = (projectId) => {
         console.warn(
             'Deletion attempted. A custom modal is required before permanent deletion. Simulating confirmation...'
@@ -71,21 +82,47 @@ function ProjectListPage() {
         console.log(`Project ID ${projectId} deleted.`);
     };
 
-    // FR-8 & Filtering Logic: useMemo আপডেট করা হলো নতুন ফিল্টার স্টেটগুলির জন্য
+    // FR-8 & Filtering Logic: useMemo আপডেট করা হলো (রোল-ভিত্তিক অ্যাক্সেস কন্ট্রোল যুক্ত)
     const filteredAndSearchedProjects = useMemo(() => {
-        // user?.name এখন AuthContext থেকে আসছে
-        const userName = user?.name;
+        const currentUserId = String(user?.id);
+        const userRole = user?.role;
 
-        // user লোড না হলে, কোনো অ্যাসাইনমেন্ট ফিল্টারিং হবে না।
         let filtered = projects;
 
-        // 1. Filter by User Assignment (FR-8 refinement)
-        if (userName && filterAssignment === 'Assigned to me') {
+        if (!user || !userRole) {
+            return projects;
+        }
+
+        const isManagerOrAdmin =
+            userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.PROJECT_MANAGER;
+
+        // --- ✅ রোল-ভিত্তিক অ্যাক্সেস এবং অ্যাসাইনমেন্ট ফিল্টারিং লজিক ---
+
+        // যদি ইউজার সাধারণ ইউজার হন:
+        if (!isManagerOrAdmin) {
+            // সাধারণ ইউজাররা সর্বদা শুধুমাত্র তাদের অ্যাসাইন করা প্রজেক্টগুলোই দেখতে পাবেন,
+            // filterAssignment-এর মান যাই হোক না কেন (এটি অ্যাক্সেস কন্ট্রোল)।
             filtered = filtered.filter(
                 (project) =>
-                    project.manager.includes(userName) || project.members.includes(userName)
+                    // Manager: managerId-এর সাথে ইউজার ID হুবহু মিলানো হচ্ছে
+                    String(project.managerId) === currentUserId ||
+                    // Members: members অ্যারেতে ID আছে কিনা দেখা হচ্ছে
+                    (project.members && project.members.map(String).includes(currentUserId))
             );
         }
+        // যদি ইউজার Admin/Manager হন:
+        else if (filterAssignment === 'Assigned to me') {
+            // Admin/Manager যদি ম্যানুয়ালি 'Assigned to me' ফিল্টার সিলেক্ট করেন:
+            filtered = filtered.filter(
+                (project) =>
+                    String(project.managerId) === currentUserId ||
+                    (project.members && project.members.map(String).includes(currentUserId))
+            );
+        }
+        // Admin/Manager যখন filterAssignment 'All' হবে, তখন কোনো ফিল্টারিং হবে না,
+        // ফলে তারা filtered = projects পাবে (অর্থাৎ সব প্রজেক্ট দেখতে পাবে)।
+
+        // --- শেষ রোল-ভিত্তিক অ্যাক্সেস এবং অ্যাসাইনমেন্ট ফিল্টারিং লজিক ---
 
         // 2. Filter by Status (FR-8 refinement)
         if (filterStatus !== 'All') {
@@ -95,13 +132,20 @@ function ProjectListPage() {
         // 3. Filter by Search Term
         if (searchTerm) {
             const lowerCaseSearch = searchTerm.toLowerCase();
-            filtered = filtered.filter(
-                (project) =>
+            filtered = filtered.filter((project) => {
+                // মেম্বারদের নাম বের করে সার্চের জন্য একটি অস্থায়ী তালিকা তৈরি
+                const memberNames = (project.members || [])
+                    .map((memberId) => userMap[String(memberId)] || '')
+                    .join(' ')
+                    .toLowerCase();
+
+                return (
                     project.title.toLowerCase().includes(lowerCaseSearch) ||
                     project.description.toLowerCase().includes(lowerCaseSearch) ||
-                    project.manager.toLowerCase().includes(lowerCaseSearch) ||
-                    project.members.some((member) => member.toLowerCase().includes(lowerCaseSearch))
-            );
+                    project.manager.toLowerCase().includes(lowerCaseSearch) || // manager name
+                    memberNames.includes(lowerCaseSearch) // মেম্বারদের নামের মধ্যে সার্চ
+                );
+            });
         }
 
         // 4. Sort by Status (In Progress first)
@@ -110,7 +154,7 @@ function ProjectListPage() {
             if (a.status !== 'In Progress' && b.status === 'In Progress') return 1;
             return 0;
         });
-    }, [projects, user, searchTerm, filterStatus, filterAssignment]); // Dependency Array আপডেট করা হলো
+    }, [projects, user, searchTerm, filterStatus, filterAssignment]);
 
     return (
         <div className="p-6 md:p-8 bg-gray-50 min-h-screen">
@@ -140,7 +184,7 @@ function ProjectListPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search projects by title, manager, or member..."
+                        placeholder="Search projects by title, manager, or member name..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition"
@@ -187,9 +231,18 @@ function ProjectListPage() {
                                 value={filterAssignment}
                                 onChange={(e) => setFilterAssignment(e.target.value)}
                                 className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                // ✅ UI পরিবর্তন: যদি সাধারণ ইউজার হয়, তবে 'All Projects' অপশনটি disabled করা হলো
+                                // এবং এটি নির্বাচিত হলেও লজিক অনুযায়ী ফিল্টারডই থাকবে।
+                                disabled={
+                                    !hasRole(['admin', 'project_manager']) &&
+                                    filterAssignment === 'All'
+                                }
                             >
                                 <option value="Assigned to me">Assigned to me</option>
-                                <option value="All">All Projects</option>
+                                {/* Admin এবং Manager-এর জন্য 'All' অপশনটি রাখা হলো */}
+                                {hasRole(['admin', 'project_manager']) && (
+                                    <option value="All">All Projects</option>
+                                )}
                             </select>
                         </div>
 
@@ -227,7 +280,9 @@ function ProjectListPage() {
                         <ProjectCard
                             key={project.id}
                             project={project}
-                            // onEdit and onDelete icons are shown based on permission
+                            // userMap প্রপস হিসেবে ProjectCard-এ পাস করা হলো
+                            userMap={userMap}
+                            // ✅ handleEditProject এবং handleDeleteProject ফাংশনগুলো ব্যবহার করা হলো
                             onEdit={canCreateProject ? handleEditProject : null}
                             onDelete={canCreateProject ? handleDeleteProject : null}
                         />

@@ -18,126 +18,35 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import CommentSection from '../../components/tasks/CommentSection';
-import TaskBoard from '../../components/tasks/TaskBoard'; // ✅ Uncommented: TaskBoard.jsx আমদানি করা হলো
-// --- Import Reusable Components (Assuming paths) ---
+import TaskBoard from '../../components/tasks/TaskBoard';
 import TaskModal from '../../components/tasks/TaskModal';
+// ✅ Updated Imports: ALL_MOCK_TASKS এবং অন্যান্য কনস্ট্যান্টস ব্যবহার করা হলো
+import { ALL_MOCK_TASKS, INITIAL_PROJECTS, mockProjectMembers } from '../../utils/constants';
 
-// --- MOCK DATA ---
-const mockProjects = [
-    {
-        id: 1,
-        title: 'TaskMaster Core Backend',
-        description:
-            'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3). This is a critical infrastructure project that underpins all frontend functionality. Key deliverables include API documentation and unit test coverage.',
-        startDate: '2025-12-01',
-        endDate: '2026-01-15',
-        status: 'In Progress',
-        progress: 45,
-        manager: { id: 1, name: 'Alice Smith' },
-        members: [
-            { id: 1, name: 'Alice Smith' },
-            { id: 2, name: 'Bob Johnson' },
-            { id: 3, name: 'Eve Adams' }
-        ],
-        tasks: [101, 102, 103, 104] // Associated Task IDs
-    },
-    {
-        id: 2,
-        title: 'Frontend UI/UX Implementation',
-        description:
-            'Develop the React frontend using Tailwind CSS. Focus on responsive design (NFR-7) and Task Board (Kanban) implementation (FR-15). The user experience must be intuitive and fast.',
-        startDate: '2025-11-25',
-        endDate: '2026-01-30',
-        status: 'In Progress',
-        progress: 60,
-        manager: { id: 2, name: 'Bob Johnson' },
-        members: [
-            { id: 1, name: 'Alice Smith' },
-            { id: 2, name: 'Bob Johnson' },
-            { id: 4, name: 'Chris Lee' }
-        ],
-        tasks: [201, 202, 203]
-    }
-];
+// --- MOCK DATA UTILITIES ---
 
-// Existing mockTasks remain for initial data load
-const mockTasks = [
-    {
-        id: 101,
-        title: 'Setup Database Schemas',
-        status: 'done',
-        priority: 'high',
-        assignee: 'Alice Smith',
-        assigneeId: 1,
-        dueDate: '2025-12-10',
-        description: 'Completed basic schemas for user and project models.'
-    },
-    {
-        id: 102,
-        title: 'API for Project Creation',
-        status: 'in_progress',
-        priority: 'critical',
-        assignee: 'Bob Johnson',
-        assigneeId: 2,
-        dueDate: '2025-12-18',
-        description: 'Working on request validation and database interaction.'
-    },
-    {
-        id: 103,
-        title: 'Write Unit Tests for Auth',
-        status: 'to_do',
-        priority: 'medium',
-        assignee: 'Eve Adams',
-        assigneeId: 3,
-        dueDate: '2025-12-25',
-        description: ''
-    },
-    {
-        id: 104,
-        title: 'Integrate Email Notifications',
-        status: 'blocked',
-        priority: 'high',
-        assignee: 'Alice Smith',
-        assigneeId: 1,
-        dueDate: '2026-01-05',
-        description: 'Blocked waiting for SMTP server credentials.'
-    },
-    {
-        id: 201,
-        title: 'Design System Documentation',
-        status: 'done',
-        priority: 'low',
-        assignee: 'Bob Johnson',
-        assigneeId: 2,
-        dueDate: '2025-12-05',
-        description: 'Documented core component styles and usage.'
-    },
-    {
-        id: 202,
-        title: 'Develop TaskModal Component',
-        status: 'in_progress',
-        priority: 'medium',
-        assignee: 'Chris Lee',
-        assigneeId: 4,
-        dueDate: '2025-12-20',
-        description: 'Implementation in progress, focusing on form validation (FR-10).'
-    },
-    {
-        id: 203,
-        title: 'Setup Routing and Layout',
-        status: 'done',
-        priority: 'high',
-        assignee: 'Alice Smith',
-        assigneeId: 1,
-        dueDate: '2025-12-01',
-        description: 'Finished basic React Router setup and main app layout.'
-    }
-];
+const getProjectById = (id) => INITIAL_PROJECTS.find((p) => p.id === Number(id));
 
-const getProjectById = (id) => mockProjects.find((p) => p.id === Number(id));
+// টাস্কগুলি এখন ALL_MOCK_TASKS থেকে লোড করা হবে
 const getTasksByProject = (projectTaskIds) =>
-    mockTasks.filter((t) => projectTaskIds.includes(t.id));
-// --- END MOCK DATA ---
+    ALL_MOCK_TASKS.filter((t) => projectTaskIds.includes(t.id));
+
+// helper function: member IDs-কে সম্পূর্ণ member object-এ রূপান্তর করে
+const mapMemberData = (memberIds, membersList) =>
+    memberIds.map((id) => {
+        const member = membersList.find((m) => m.id === id);
+        return member || { id, name: 'Unknown Member', role: 'N/A' };
+    });
+
+// helper function: manager ID-কে manager object-এ রূপান্তর করে
+const getManagerData = (managerId, membersList) => {
+    const manager = membersList.find((m) => m.id === managerId);
+    return manager
+        ? { id: manager.id, name: manager.name }
+        : { id: managerId, name: 'Unknown Manager' };
+};
+
+// --- END MOCK DATA UTILITIES ---
 
 // Hardcoded Styles (Typically from constants.js)
 const statusStyles = {
@@ -249,17 +158,31 @@ function ProjectDetailPage() {
         setLoading(true);
         setError(null);
 
-        const fetchedProject = getProjectById(projectId);
+        const rawProject = getProjectById(projectId);
 
-        if (fetchedProject) {
-            setProject(fetchedProject);
-            const fetchedTasks = getTasksByProject(fetchedProject.tasks);
+        if (rawProject) {
+            // ✅ STEP 1: Process Manager and Members data using mockProjectMembers
+            const processedManager = getManagerData(rawProject.managerId, mockProjectMembers);
+            const processedMembers = mapMemberData(rawProject.members, mockProjectMembers);
+
+            // ✅ STEP 2: Create the final project object (Merging raw data with processed objects)
+            const finalProject = {
+                ...rawProject,
+                manager: processedManager, // Now an object: {id: 1, name: 'Alice Smith'}
+                members: processedMembers // Now array of objects
+            };
+
+            setProject(finalProject);
+
+            // ✅ STEP 3: Fetch tasks from the new ALL_MOCK_TASKS source
+            const fetchedTasks = getTasksByProject(rawProject.tasks);
             setTasks(fetchedTasks);
         } else {
             setError('Project not found.');
         }
 
         setLoading(false);
+        // Added dependencies to ensure useEffect runs correctly if IDs change
     }, [projectId]);
 
     if (loading) {
@@ -273,11 +196,11 @@ function ProjectDetailPage() {
         );
     }
 
-    if (error) {
+    if (error || !project) {
         return (
             <div className="p-8 bg-red-50 border border-red-200 rounded-xl m-6">
                 <h1 className="text-2xl font-bold text-red-800 mb-2">Error</h1>
-                <p className="text-red-700">{error}</p>
+                <p className="text-red-700">{error || 'An unknown error occurred.'}</p>
                 <Link
                     to="/projects"
                     className="mt-4 inline-flex items-center text-indigo-600 hover:text-indigo-800 transition"
@@ -315,7 +238,7 @@ function ProjectDetailPage() {
                 </h1>
                 <p className="text-gray-600 mb-6 border-b pb-4">{project.description}</p>
 
-                {/* Key Metrics Grid (unchanged) */}
+                {/* Key Metrics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
                     {/* Progress */}
                     <div className="p-4 bg-indigo-50 rounded-lg shadow-sm">
@@ -356,7 +279,7 @@ function ProjectDetailPage() {
 
             {/* Details and Task View Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Column 1: Project Details (unchanged) */}
+                {/* Column 1: Project Details */}
                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-xl h-full">
                     <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
                         <List className="w-5 h-5 mr-2 text-indigo-500" /> Project Information
@@ -366,6 +289,7 @@ function ProjectDetailPage() {
                             <User className="w-5 h-5 mr-3 text-indigo-500 flex-shrink-0" />
                             <div>
                                 <p className="font-semibold">Project Manager</p>
+                                {/* ✅ Now correctly uses object property */}
                                 <p>{project.manager.name}</p>
                             </div>
                         </div>
@@ -398,6 +322,7 @@ function ProjectDetailPage() {
 
                     {/* Members List */}
                     <div className="space-y-2">
+                        {/* ✅ Now maps over enriched member objects */}
                         {project.members.map((member) => (
                             <div
                                 key={member.id}
@@ -465,25 +390,23 @@ function ProjectDetailPage() {
                         {/* Task Content Area */}
                         {viewMode === 'kanban' ? (
                             <div className="py-4">
-                                {/* ✅ TaskBoard Component Rendering (Uncommented) */}
                                 <TaskBoard
                                     tasks={tasks}
                                     projectMembers={project.members}
                                     onStatusChange={handleStatusChange}
-                                    onEditTask={handleOpenTaskModal} // Edit opens the modal
-                                    onOpenComments={handleOpenCommentSection} // Comments open the sidebar
+                                    onEditTask={handleOpenTaskModal}
+                                    onOpenComments={handleOpenCommentSection}
                                 />
                             </div>
                         ) : (
-                            // List View (A11Y fix applied)
+                            // List View
                             <div className="space-y-1 py-4">
                                 {tasks.length > 0 ? (
                                     tasks.map((task) => (
-                                        <button // ✅ Clickable div changed to button for accessibility
+                                        <button
                                             key={task.id}
                                             type="button"
-                                            onClick={() => handleOpenTaskModal(task)} // Click to edit/view details
-                                            // Ensure button looks like the original div
+                                            onClick={() => handleOpenTaskModal(task)}
                                             className="w-full p-0 border-none bg-transparent appearance-none text-left"
                                         >
                                             <ProjectTaskItem task={task} />
@@ -506,6 +429,7 @@ function ProjectDetailPage() {
                     task={selectedTask}
                     onClose={() => setIsTaskModalOpen(false)}
                     onSave={handleSaveTask}
+                    // ✅ Passes the enriched member array to the modal
                     projectMembers={project.members}
                 />
             )}

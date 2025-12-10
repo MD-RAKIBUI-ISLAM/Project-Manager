@@ -1,4 +1,4 @@
-// src/context/AuthContext.jsx (FINAL Working FIX - Role State Added)
+// src/context/AuthContext.jsx (FINAL Working FIX - Role State Added & ID Generation Fixed)
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -23,6 +23,17 @@ const getInitialMockUsers = () => {
 };
 // --- END INITIAL MOCK USER DATA ---
 
+/**
+ * Helper function to generate a unique ID for new mock users.
+ * Finds the maximum existing ID and returns the next integer.
+ */
+const getNextId = (users) => {
+    // String হিসেবে থাকা ID গুলিকেও Number এ convert করে max ID বের করা হলো
+    const maxId = users.reduce((max, user) => Math.max(max, Number(user.id)), 0);
+    // সর্বোচ্চ ID-এর থেকে 1 বেশি ID রিটার্ন করা হলো
+    return maxId + 1;
+};
+
 export const AuthContext = createContext();
 
 // ✅ FIX: getInitialState এ 'role' কে explicit state হিসেবে রাখা হলো
@@ -41,7 +52,7 @@ const getInitialState = () => {
     }
 
     // Explicitly derive and store role
-    const role = user?.role || null; // <--- ADDED LOGIC
+    const role = user?.role || null;
 
     return {
         isAuthenticated: !!token && !!user,
@@ -136,12 +147,15 @@ export function AuthProvider({ children }) {
                 return { success: false, error };
             }
 
+            // ✅ ID জেনারেশন ফিক্স করা হলো
+            const newId = getNextId(mockUsers);
+
             const newUser = {
-                id: mockUsers.length + 1,
+                id: newId,
                 name,
                 email,
                 role: role.toLowerCase(),
-                token: `mock-token-${mockUsers.length + 1}`,
+                token: `mock-token-${newId}`,
                 password
             };
 
@@ -194,13 +208,16 @@ export function AuthProvider({ children }) {
                 return { success: false, error: 'User with this email already exists.' };
             }
 
+            // ✅ ID জেনারেশন ফিক্স করা হলো
+            const newId = getNextId(mockUsers);
+
             // মক ইউজার লিস্টে নতুন ইউজারকে যোগ করা হলো
             const newUser = {
-                id: mockUsers.length + 1,
+                id: newId,
                 name,
                 email,
                 role: role.toLowerCase(),
-                token: `mock-token-${mockUsers.length + 1}`,
+                token: `mock-token-${newId}`,
                 password
             };
 
@@ -219,6 +236,7 @@ export function AuthProvider({ children }) {
 
     const fetchUsers = useCallback(async () => {
         await new Promise((resolve) => setTimeout(resolve, 300));
+        // আইডিগুলিকে string এ কনভার্ট করা হয়েছে যাতে findIndex ঠিকভাবে কাজ করে
         return mockUsers.map(({ password, ...user }) => ({ ...user, id: String(user.id) }));
     }, [mockUsers]);
 

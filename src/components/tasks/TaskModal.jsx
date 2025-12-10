@@ -3,7 +3,7 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import { MOCK_PROJECTS, mockProjectMembers, TASK_PRIORITIES } from '../../utils/constants';
+import { INITIAL_PROJECTS, mockProjectMembers, TASK_PRIORITIES } from '../../utils/constants';
 import Button from '../common/Button';
 
 /**
@@ -22,7 +22,7 @@ function TaskModal({
     onClose,
     onSave,
     projectMembers = mockProjectMembers,
-    availableProjects = MOCK_PROJECTS
+    availableProjects = INITIAL_PROJECTS
 }) {
     const isEditing = !!task;
 
