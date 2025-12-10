@@ -1,5 +1,3 @@
-// src/App.jsx (FINAL FIX: Routing Focussed)
-
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -18,6 +16,8 @@ import NotFound from './pages/NotFound';
 import NotificationListPage from './pages/Notifications/NotificationListPage';
 import ProjectDetailsPage from './pages/Projects/ProjectDetailsPage';
 import ProjectListPage from './pages/Projects/ProjectListPage';
+// 👇 নতুন আমদানি (New Import)
+import TeamMembersPage from './pages/Team/TeamMembersPage';
 import { USER_ROLES } from './utils/constants';
 
 function App() {
@@ -31,7 +31,6 @@ function App() {
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                     {/* --- 2. General Protected Routes Wrapper (AppLayout) --- */}
-                    {/* এই রুটটি AppLayout এবং PrivateRoute দ্বারা সুরক্ষিত। */}
                     <Route
                         path="/"
                         element={
@@ -47,12 +46,12 @@ function App() {
                         <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
                         <Route path="notifications" element={<NotificationListPage />} />
 
+                        {/* 👇 নতুন রুট: Team Members (সকল লগইন করা ইউজারের জন্য) */}
+                        <Route path="team" element={<TeamMembersPage />} />
+
                         {/* 🛡️ 2.1: Admin Routes (Nested, Role Check) */}
-                        {/* FIX: User Management কে এখন সাধারণ Protected Route এর ভেতরে নেস্টেড করা হলো। 
-                            পাথ থেকে স্লাশ (/) সরানো হয়েছে।
-                        */}
                         <Route
-                            path="admin/users" // ✅ ফিক্সড: এখন এটি AppLayout এর ভেতরে কাজ করবে
+                            path="admin/users"
                             element={
                                 <PrivateRoute requiredRole={USER_ROLES.ADMIN}>
                                     <UserManagementPage />

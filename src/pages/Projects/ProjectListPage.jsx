@@ -7,11 +7,16 @@ import Button from '../../components/common/Button';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
 // import useAuth from '../../hooks/useAuth'; // ✅ রিয়েল অ্যাপে এটিকে আনকমেন্ট করতে হবে
+// ✅ constants.js থেকে প্রয়োজনীয় ডেটা ইমপোর্ট করা হলো
+import {
+    INITIAL_PROJECTS,
+    MOCK_CURRENT_USER,
+    mockProjectMembers, // ✅ mockProjectMembers এই নামেই ইমপোর্ট করা হয়েছে
+    PROJECT_STATUSES
+} from '../../utils/constants';
 
-// --- MOCK AUTH HOOK FOR TESTING ---
+// --- MOCK AUTH HOOK FOR TESTING (constants.js থেকে ডেটা ব্যবহার করছে) ---
 // এই মকটি এখন ইউজার ক্রিয়েট/এডিট বাটন দেখতে পাচ্ছেন তা নিশ্চিত করছে।
-const MOCK_CURRENT_USER = { name: 'Alice Smith', role: 'PROJECT_MANAGER' };
-
 const useAuth = () => {
     // Faking user and permission check to force buttons/icons to display
     const isPermitted = () =>
@@ -25,65 +30,15 @@ const useAuth = () => {
 };
 // --- END MOCK AUTH HOOK ---
 
-// --- MOCK DATA ---
-const initialProjects = [
-    {
-        id: 1,
-        title: 'TaskMaster Core Backend',
-        description:
-            'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3).',
-        startDate: '2025-12-01',
-        endDate: '2026-01-15',
-        status: 'In Progress',
-        progress: 45, // Percentage
-        manager: 'Alice Smith (PM)',
-        members: ['Alice Smith', 'Bob Johnson', 'Eve Adams']
-    },
-    {
-        id: 2,
-        title: 'Frontend UI/UX Implementation',
-        description:
-            'Develop the React frontend using Tailwind CSS. Focus on responsive design (NFR-7) and Task Board (Kanban) implementation (FR-15).',
-        startDate: '2025-11-25',
-        endDate: '2026-01-30',
-        status: 'In Progress',
-        progress: 60,
-        manager: 'Bob Johnson (PM)',
-        members: ['Alice Smith', 'Bob Johnson', 'Chris Lee']
-    },
-    {
-        id: 3,
-        title: 'Database Migration & Setup',
-        description:
-            'Set up production PostgreSQL database and handle initial data migration and environment configuration.',
-        startDate: '2025-11-10',
-        endDate: '2025-12-05',
-        status: 'Completed',
-        progress: 100,
-        manager: 'Chris Lee (Admin)',
-        members: ['Chris Lee']
-    }
-];
-
-// Mock User Data for ProjectForm's availableMembers
-const mockProjectMembers = [
-    { id: 1, name: 'Alice Smith', role: 'Project Manager' },
-    { id: 2, name: 'Bob Johnson', role: 'Team Member' },
-    { id: 3, name: 'Chris Lee', role: 'Admin' },
-    { id: 4, name: 'David Kim', role: 'Team Member' },
-    { id: 5, name: 'Eve Adams', role: 'Team Member' }
-];
-
-// --- END MOCK DATA ---
-
 function ProjectListPage() {
     const { user, isPermitted } = useAuth();
-    const [projects, setProjects] = useState(initialProjects);
+    // ✅ INITIAL_PROJECTS কন্সট্যান্ট থেকে ডেটা লোড করা হলো
+    const [projects, setProjects] = useState(INITIAL_PROJECTS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [projectToEdit, setProjectToEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // ✅ FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
+    // ✅ FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'To Do', 'In Progress', 'Completed'
     const [filterAssignment, setFilterAssignment] = useState('Assigned to me'); // 'Assigned to me', 'All'
@@ -121,7 +76,7 @@ function ProjectListPage() {
 
     // ✅ FR-7: Delete Project Handler (Custom Modal Placeholder)
     const handleDeleteProject = (projectId) => {
-        // ⚠️ CRITICAL CHANGE: window.confirm/alert বাদ দেওয়া হলো।
+        // ⚠️ CRITICAL CHANGE: window.confirm/alert বাদ দেওয়া হলো।
         // প্রোডাকশনে ব্যবহারের জন্য এখানে অবশ্যই একটি কাস্টম কনফার্মেশন মোডাল রেন্ডার করতে হবে।
         console.warn(
             'Deletion attempted. A custom modal is required before permanent deletion. Simulating confirmation...'
@@ -271,10 +226,12 @@ function ProjectListPage() {
                                 className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Statuses</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="To Do">To Do</option>
-                                <option value="Completed">Completed</option>
-                                <option value="On Hold">On Hold</option>
+                                {/* ✅ PROJECT_STATUSES কন্সট্যান্ট থেকে অপশনগুলি ম্যাপ করা হলো */}
+                                {PROJECT_STATUSES.map((status) => (
+                                    <option key={status} value={status}>
+                                        {status}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -313,6 +270,7 @@ function ProjectListPage() {
                         setProjectToEdit(null);
                     }}
                     onSave={handleSaveProject}
+                    // ✅ mockProjectMembers কন্সট্যান্ট থেকে ডেটা লোড করা হলো
                     availableMembers={mockProjectMembers}
                 />
             )}

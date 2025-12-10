@@ -1,24 +1,97 @@
-// src/utils/constants.js (UPDATED for Task Management & Consistency)
+// src/utils/constants.js
 
 /**
  * ----------------------------------------------------
- * USER ROLES (FR-3)
+ * USER ROLES (Consistency maintained in Uppercase)
  * Defines the roles used for access control (NFR-5)
- * Roles match the string values used in AuthContext mock data
  * ----------------------------------------------------
  */
 export const USER_ROLES = {
-    ADMIN: 'admin', // Matches mock data
-    PROJECT_MANAGER: 'project_manager', // UPDATED: Changed from 'Project Manager' to 'project_manager'
-    MEMBER: 'member', // NEW role added, matches AuthContext
-    DEVELOPER: 'member', // Mapped to 'member' as per user's logic
-    VIEWER: 'viewer' // Keeping viewer role
+    ADMIN: 'ADMIN',
+    PROJECT_MANAGER: 'PROJECT_MANAGER', // Matches mock data
+    MEMBER: 'MEMBER',
+    DEVELOPER: 'DEVELOPER',
+    VIEWER: 'VIEWER'
 };
 
 /**
  * ----------------------------------------------------
+ * PROJECT STATUSES (FR-8 & Filter Options)
+ * Defines the available statuses for projects and filter options.
+ * ----------------------------------------------------
+ */
+export const PROJECT_STATUSES = ['To Do', 'In Progress', 'Completed', 'On Hold'];
+
+/**
+ * ----------------------------------------------------
+ * MOCK AUTH HOOK DATA (Used in ProjectListPage's mock useAuth)
+ * ----------------------------------------------------
+ */
+export const MOCK_CURRENT_USER = { name: 'Alice Smith', role: USER_ROLES.PROJECT_MANAGER };
+
+/**
+ * ----------------------------------------------------
+ * MOCK PROJECT MEMBERS (mockProjectMembers)
+ * ProjectListPage এবং আপনার দেওয়া ডেটা একত্রিত করে তৈরি করা একক তালিকা।
+ * ----------------------------------------------------
+ */
+export const mockProjectMembers = [
+    { id: 1, name: 'Alice Smith', role: 'Project Manager' },
+    { id: 2, name: 'Bob Johnson', role: 'Team Member' },
+    { id: 3, name: 'Chris Lee', role: 'Admin' },
+    { id: 4, name: 'David Kim', role: 'Team Member' },
+    { id: 5, name: 'Eve Adams', role: 'Team Member' },
+    // Charlie Brown কে আলাদা আইডি দিয়ে যোগ করা হলো যাতে ডুপ্লিকেট না হয়
+    { id: 6, name: 'Charlie Brown', role: 'Team Member' }
+];
+
+/**
+ * ----------------------------------------------------
+ * MOCK PROJECT DATA (INITIAL_PROJECTS) - (FR-1, FR-2)
+ * ----------------------------------------------------
+ */
+export const INITIAL_PROJECTS = [
+    {
+        id: 1,
+        title: 'TaskMaster Core Backend',
+        description:
+            'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3).',
+        startDate: '2025-12-01',
+        endDate: '2026-01-15',
+        status: 'In Progress',
+        progress: 45, // Percentage
+        manager: 'Alice Smith (PM)',
+        members: ['Alice Smith', 'Bob Johnson', 'Eve Adams']
+    },
+    {
+        id: 2,
+        title: 'Frontend UI/UX Implementation',
+        description:
+            'Develop the React frontend using Tailwind CSS. Focus on responsive design (NFR-7) and Task Board (Kanban) implementation (FR-15).',
+        startDate: '2025-11-25',
+        endDate: '2026-01-30',
+        status: 'In Progress',
+        progress: 60,
+        manager: 'Bob Johnson (PM)',
+        members: ['Alice Smith', 'Bob Johnson', 'Chris Lee']
+    },
+    {
+        id: 3,
+        title: 'Database Migration & Setup',
+        description:
+            'Set up production PostgreSQL database and handle initial data migration and environment configuration.',
+        startDate: '2025-11-10',
+        endDate: '2025-12-05',
+        status: 'Completed',
+        progress: 100,
+        manager: 'Chris Lee (Admin)',
+        members: ['Chris Lee']
+    }
+];
+
+/**
+ * ----------------------------------------------------
  * TASK STATUSES (FR-12)
- * Defines the task workflow statuses
  * ----------------------------------------------------
  */
 export const TASK_STATUSES = [
@@ -36,7 +109,6 @@ export const TASK_STATUSES = [
 /**
  * ----------------------------------------------------
  * TASK PRIORITIES (FR-15 Filtering/Sorting & FR-10)
- * Defines task priority levels.
  * ----------------------------------------------------
  */
 export const TASK_PRIORITIES = [
@@ -52,18 +124,6 @@ export const TASK_PRIORITIES = [
  * ----------------------------------------------------
  */
 export const PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
-
-/**
- * ----------------------------------------------------
- * MOCK PROJECT MEMBERS
- * ----------------------------------------------------
- */
-// NOTE: ID 1, 2, 3 এখানে রাখা হলো। Assignee Role এখন AuthContext-এর Role-এর সাথে সামঞ্জস্যপূর্ণ।
-export const mockProjectMembers = [
-    { id: 1, name: 'Alice Smith' }, // Role: admin (from AuthContext mock)
-    { id: 2, name: 'Bob Johnson' }, // Role: project_manager (from AuthContext mock)
-    { id: 3, name: 'Charlie Brown' } // Role: member (from AuthContext mock)
-];
 
 /**
  * ----------------------------------------------------
@@ -112,7 +172,7 @@ export const initialTasks = [
         priority: 'low',
         dueDate: '2025-12-12',
         assigneeId: 3,
-        assignee: 'Charlie Brown',
+        assignee: 'Chris Lee', // Assignee updated to Chris Lee (ID 3)
         status: 'blocked'
     },
     {
@@ -122,7 +182,7 @@ export const initialTasks = [
         description: 'Prepare documentation for Task Management module.',
         priority: 'medium',
         dueDate: '2025-12-20',
-        assigneeId: 3,
+        assigneeId: 6, // Assignee updated to Charlie Brown (ID 6)
         assignee: 'Charlie Brown',
         status: 'back_log'
     }
@@ -131,7 +191,6 @@ export const initialTasks = [
 /**
  * ----------------------------------------------------
  * NAVIGATION LINKS (NFR-8)
- * Defines main links based on user role
  * ----------------------------------------------------
  */
 export const NAV_LINKS = [
@@ -139,7 +198,6 @@ export const NAV_LINKS = [
         path: '/dashboard',
         label: 'Dashboard',
         icon: 'LayoutDashboard',
-        // Role string updated to use the new constant values
         roles: [USER_ROLES.ADMIN, USER_ROLES.PROJECT_MANAGER, USER_ROLES.DEVELOPER]
     },
     {

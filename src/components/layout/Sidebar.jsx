@@ -1,12 +1,10 @@
-// src/components/layout/Sidebar.jsx (FINAL FIX - Role Consistency)
-
 import {
     Briefcase,
     ChevronRight,
     LayoutDashboard,
     ListTodo,
     Settings,
-    Users,
+    Users, // Users আইকন
     X
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -14,18 +12,18 @@ import { Link, useLocation } from 'react-router-dom';
 import TaskMasterLogo from '../../assets/sidebarlogo2.jpg';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
-import { USER_ROLES } from '../../utils/constants'; // FIX 1: USER_ROLES কনস্ট্যান্ট আমদানি করা
+import { USER_ROLES } from '../../utils/constants';
 
-// --- Global Nav Links Data ---
-const navLinks = [
+// --- Global Nav Links Data (পরিবর্তিত) ---
+// User Management এবং Team Members উভয়কেই এখানে যোগ করা হলো,
+// এবং isAdmin prop ব্যবহার করে কন্ডিশনাল রেন্ডারিং করা হবে।
+const baseNavLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: Briefcase },
-    { name: 'Tasks', path: '/tasks', icon: ListTodo },
-    // requiredAdmin: true সেট করা আছে
-    { name: 'User Management', path: '/admin/users', icon: Users, requiresAdmin: true }
+    { name: 'Tasks', path: '/tasks', icon: ListTodo }
 ];
 
-// NavItem কম্পোনেন্ট
+// NavItem কম্পোনেন্ট (অপরিবর্তিত)
 function NavItem({ link, isAdmin, closeSidebar }) {
     const location = useLocation();
 
@@ -36,6 +34,11 @@ function NavItem({ link, isAdmin, closeSidebar }) {
 
     // যদি লিঙ্কটি Admin অ্যাক্সেস দাবি করে এবং ইউজার Admin না হয়, তবে লিঙ্কটি রেন্ডার হবে না
     if (link.requiresAdmin && !isAdmin) {
+        return null;
+    }
+    // 👇 নতুন লজিক: যদি লিঙ্কটি Admin না হয় এবং ইউজার Admin হয়, তবে লিঙ্কটি রেন্ডার হবে না
+    // (এটি "Team Members" লুকানোর জন্য Admin-দের ক্ষেত্রে)।
+    if (link.requiresNonAdmin && isAdmin) {
         return null;
     }
 
@@ -51,17 +54,25 @@ function NavItem({ link, isAdmin, closeSidebar }) {
     );
 }
 
-// --- Sidebar কম্পোনেন্ট ---
+// --- Sidebar কম্পোনেন্ট (পরিবর্তিত) ---
 function Sidebar() {
     const { user } = useAuth();
     const { isSidebarOpen, closeSidebar } = useSidebar();
 
-    // FIX 2: isAdmin চেকটিকে শুধুমাত্র USER_ROLES.ADMIN এর জন্য সেট করা হলো।
-    // এটি /admin/users রুটের সুরক্ষা নীতির সাথে সামঞ্জস্যপূর্ণ।
     const isAdmin = user?.role === USER_ROLES.ADMIN;
+
+    // 👇 নতুন নেভিগেশন লিঙ্ক ডেটা
+    // রোলের ভিত্তিতে লিঙ্কগুলি যোগ করা হচ্ছে।
+    const navLinks = [
+        ...baseNavLinks,
+        isAdmin
+            ? { name: 'User Management', path: '/admin/users', icon: Users, requiresAdmin: true }
+            : { name: 'Team Members', path: '/team', icon: Users, requiresNonAdmin: true }
+    ];
 
     return (
         <>
+            {/* ... (বাকি কোড অপরিবর্তিত) ... */}
             <div
                 className={`fixed inset-y-0 left-0 z-50 transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                         transition-transform duration-300 ease-in-out lg:static lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 shadow-xl lg:shadow-none`}
@@ -72,7 +83,7 @@ function Sidebar() {
                         <img
                             src={TaskMasterLogo}
                             alt="TaskMaster Logo"
-                            className="h-20 w-20 rounded-full" // লোগোর আকার সেট করা হলো
+                            className="h-20 w-20 rounded-full"
                         />
                         <h1 className="text-2xl font-bold text-indigo-700">TaskMaster</h1>
                     </div>{' '}
@@ -86,8 +97,9 @@ function Sidebar() {
                     </button>
                 </div>
 
-                {/* Navigation Links */}
+                {/* Navigation Links (মেইন চেঞ্জ এখানে) */}
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    {/* এখন navLinks অ্যারেতে শুধুমাত্র সেই লিঙ্কটি থাকবে যা ইউজারের জন্য প্রয়োজন */}
                     {navLinks.map((link) => (
                         <NavItem
                             key={link.name}
