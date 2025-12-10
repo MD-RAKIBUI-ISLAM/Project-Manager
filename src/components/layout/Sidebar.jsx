@@ -1,29 +1,30 @@
+// src/layout/Sidebar.jsx (UPDATED & FIXED)
+
 import {
     Briefcase,
     ChevronRight,
     LayoutDashboard,
     ListTodo,
     Settings,
-    Users, // Users আইকন
+    Users,
     X
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import TaskMasterLogo from '../../assets/sidebarlogo2.jpg';
+// ✅ useAuth ঠিক আছে
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
-import { USER_ROLES } from '../../utils/constants';
+// USER_ROLES ইমপোর্ট করা আছে, কিন্তু এখন আর isAdmin ম্যানুয়ালি চেক করার দরকার নেই
 
-// --- Global Nav Links Data (পরিবর্তিত) ---
-// User Management এবং Team Members উভয়কেই এখানে যোগ করা হলো,
-// এবং isAdmin prop ব্যবহার করে কন্ডিশনাল রেন্ডারিং করা হবে।
+// --- Global Nav Links Data (অপরিবর্তিত) ---
 const baseNavLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Tasks', path: '/tasks', icon: ListTodo }
 ];
 
-// NavItem কম্পোনেন্ট (অপরিবর্তিত)
+// NavItem কম্পোনেন্ট (অপরিবর্তিত - এটি আগের মতোই isAdmin prop ব্যবহার করবে)
 function NavItem({ link, isAdmin, closeSidebar }) {
     const location = useLocation();
 
@@ -36,8 +37,7 @@ function NavItem({ link, isAdmin, closeSidebar }) {
     if (link.requiresAdmin && !isAdmin) {
         return null;
     }
-    // 👇 নতুন লজিক: যদি লিঙ্কটি Admin না হয় এবং ইউজার Admin হয়, তবে লিঙ্কটি রেন্ডার হবে না
-    // (এটি "Team Members" লুকানোর জন্য Admin-দের ক্ষেত্রে)।
+    // যদি লিঙ্কটি Admin না হয় এবং ইউজার Admin হয়, তবে লিঙ্কটি রেন্ডার হবে না
     if (link.requiresNonAdmin && isAdmin) {
         return null;
     }
@@ -56,13 +56,15 @@ function NavItem({ link, isAdmin, closeSidebar }) {
 
 // --- Sidebar কম্পোনেন্ট (পরিবর্তিত) ---
 function Sidebar() {
-    const { user } = useAuth();
+    // ✅ FIX: user-এর পরিবর্তে সরাসরি isAdmin এবং loading prop ব্যবহার করা হলো
+    const { isAdmin, loading } = useAuth();
     const { isSidebarOpen, closeSidebar } = useSidebar();
 
-    const isAdmin = user?.role === USER_ROLES.ADMIN;
+    // ❌ এই লাইনটি মুছে দেওয়া হলো, কারণ isAdmin এখন সরাসরি useAuth থেকে আসছে
+    // const isAdmin = user?.role === USER_ROLES.ADMIN;
 
-    // 👇 নতুন নেভিগেশন লিঙ্ক ডেটা
-    // রোলের ভিত্তিতে লিঙ্কগুলি যোগ করা হচ্ছে।
+    // নতুন নেভিগেশন লিঙ্ক ডেটা
+    // isAdmin সরাসরি ব্যবহার করা হচ্ছে, যা AuthContext থেকে আসছে।
     const navLinks = [
         ...baseNavLinks,
         isAdmin
@@ -70,9 +72,14 @@ function Sidebar() {
             : { name: 'Team Members', path: '/team', icon: Users, requiresNonAdmin: true }
     ];
 
+    // Auth ডেটা লোড না হওয়া পর্যন্ত অপেক্ষা করুন
+    if (loading) {
+        return null;
+    }
+
     return (
         <>
-            {/* ... (বাকি কোড অপরিবর্তিত) ... */}
+            {/* Backdrop এবং Sidebar-এর অন্যান্য অংশ অপরিবর্তিত থাকবে */}
             <div
                 className={`fixed inset-y-0 left-0 z-50 transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                         transition-transform duration-300 ease-in-out lg:static lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 shadow-xl lg:shadow-none`}
@@ -104,7 +111,7 @@ function Sidebar() {
                         <NavItem
                             key={link.name}
                             link={link}
-                            isAdmin={isAdmin}
+                            isAdmin={isAdmin} // ✅ isAdmin Prop সরাসরি useAuth থেকে আসছে
                             closeSidebar={closeSidebar}
                         />
                     ))}

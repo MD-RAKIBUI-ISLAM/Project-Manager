@@ -3,6 +3,7 @@
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+// ✅ পরিবর্তন: মক useAuth সরানো হলো, আসল useAuth ইমপোর্ট করা হলো
 import { useAuth } from '../../context/AuthContext';
 import {
     initialTasks,
@@ -18,7 +19,7 @@ import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
 function TaskBoard() {
-    // role এখন AuthContext-এর explicit state থেকে আসবে, যা খুবই নির্ভরযোগ্য।
+    // ✅ পরিবর্তন: useAuth এখন AuthContext থেকে user এবং role পাচ্ছে।
     const { user, role } = useAuth();
 
     const [tasks, setTasks] = useState(initialTasks);
@@ -60,7 +61,9 @@ function TaskBoard() {
                 id: newId,
                 projectId: 1,
                 status: 'back_log',
-                assignee
+                assignee,
+                // assigneeId কে String হিসেবে সংরক্ষণ করা হলো, যা ফিল্টারিং লজিকের সাথে মেলে।
+                assigneeId: String(taskData.assigneeId)
             };
             setTasks((prevTasks) => [...prevTasks, newTask]);
         }
@@ -80,7 +83,7 @@ function TaskBoard() {
 
     // Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো
     const filteredAndSortedTasks = useMemo(() => {
-        // যদি user বা role লোড না হয়, তবে sorting করে সব টাস্ক দেখান
+        // user বা role না থাকলে, কোনো রোল-ভিত্তিক ফিল্টারিং হবে না, সব টাস্ক দেখাবে।
         if (!user || !role) {
             return tasks.sort((a, b) => {
                 if (filters.sortBy === 'dueDate') return new Date(a.dueDate) - new Date(b.dueDate);
@@ -91,20 +94,14 @@ function TaskBoard() {
         let filtered = tasks;
 
         // --- রোল-ভিত্তিক ফিল্টারিং লজিক ---
-
-        // ১. যদি ইউজার 'admin' বা 'project_manager' হয় (সবাইকে দেখান)
         const isManagerOrAdmin = role === USER_ROLES.ADMIN || role === USER_ROLES.PROJECT_MANAGER;
 
-        // ২. যদি Manager বা Admin না হয় (শুধু নিজেকে অ্যাসাইন করা কাজ দেখান)
+        // যদি Manager বা Admin না হয় (শুধু নিজেকে অ্যাসাইন করা কাজ দেখান)
         if (!isManagerOrAdmin) {
-            // ✅ FIX: ডেটা টাইপ সামঞ্জস্য করার জন্য String() ব্যবহার করা হলো।
+            // currentUserId কে String() দিয়ে Task-এর assigneeId-এর সাথে মিলিয়ে তুলনা করা হলো।
             const currentUserId = String(user.id);
 
-            filtered = filtered.filter(
-                (t) =>
-                    // Task-এর assigneeId-ও String-এ রূপান্তর করে তুলনা করা হলো
-                    String(t.assigneeId) === currentUserId
-            );
+            filtered = filtered.filter((t) => String(t.assigneeId) === currentUserId);
         }
         // --- শেষ রোল-ভিত্তিক ফিল্টারিং লজিক ---
 
@@ -113,7 +110,7 @@ function TaskBoard() {
             filtered = filtered.filter((t) => t.priority === filters.priority);
         }
         if (filters.assigneeId) {
-            // assigneeId ফিল্টারটিও type-safe করা হলো
+            // assigneeId ফিল্টারটিও type-safe করা হলো (String to String)
             filtered = filtered.filter((t) => String(t.assigneeId) === String(filters.assigneeId));
         }
         if (filters.searchTerm) {
@@ -131,7 +128,17 @@ function TaskBoard() {
             const sortOrderMultiplier = filters.sortOrder === 'desc' ? -1 : 1;
 
             if (filters.sortBy === 'dueDate') {
-                comparison = new Date(a.dueDate) - new Date(b.dueDate);
+                const dateA = a.dueDate
+                    ? new Date(a.dueDate)
+                    : filters.sortOrder === 'asc'
+                      ? new Date(8640000000000000)
+                      : new Date(-8640000000000000);
+                const dateB = b.dueDate
+                    ? new Date(b.dueDate)
+                    : filters.sortOrder === 'asc'
+                      ? new Date(8640000000000000)
+                      : new Date(-8640000000000000);
+                comparison = dateA - dateB;
             } else if (filters.sortBy === 'title') {
                 comparison = a.title.localeCompare(b.title);
             } else if (filters.sortBy === 'priority') {

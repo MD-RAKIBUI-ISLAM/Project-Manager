@@ -3,35 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 // ✅ FIX: USER_ROLES আমদানি করা হলো
-import { USER_ROLES } from '../utils/constants';
-
-// --- INITIAL MOCK USER DATA ---
-const INITIAL_MOCK_USERS = [
-    {
-        id: 1,
-        name: 'Alice Smith',
-        email: 'admin@project.com',
-        role: 'admin',
-        token: 'mock-admin-token',
-        password: 'password'
-    },
-    {
-        id: 2,
-        name: 'Bob Johnson',
-        email: 'manager@project.com',
-        role: 'project_manager',
-        token: 'mock-manager-token',
-        password: 'password'
-    }
-    // {
-    //     id: 3,
-    //     name: 'Charlie Brown',
-    //     email: 'member@project.com',
-    //     role: 'member',
-    //     token: 'mock-member-token',
-    //     password: 'password'
-    // }
-];
+import { INITIAL_MOCK_USERS, USER_ROLES } from '../utils/constants';
 
 // ✅ FIX: localStorage থেকে ইউজারদের ডেটা লোড করা হলো
 const getInitialMockUsers = () => {

@@ -6,42 +6,28 @@ import { useMemo, useState } from 'react';
 import Button from '../../components/common/Button';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
-// import useAuth from '../../hooks/useAuth'; // ✅ রিয়েল অ্যাপে এটিকে আনকমেন্ট করতে হবে
-// ✅ constants.js থেকে প্রয়োজনীয় ডেটা ইমপোর্ট করা হলো
-import {
-    INITIAL_PROJECTS,
-    MOCK_CURRENT_USER,
-    mockProjectMembers, // ✅ mockProjectMembers এই নামেই ইমপোর্ট করা হয়েছে
-    PROJECT_STATUSES
-} from '../../utils/constants';
-
-// --- MOCK AUTH HOOK FOR TESTING (constants.js থেকে ডেটা ব্যবহার করছে) ---
-// এই মকটি এখন ইউজার ক্রিয়েট/এডিট বাটন দেখতে পাচ্ছেন তা নিশ্চিত করছে।
-const useAuth = () => {
-    // Faking user and permission check to force buttons/icons to display
-    const isPermitted = () =>
-        // For development/mock purposes, always permit ADMIN/PROJECT_MANAGER roles here
-        true;
-    return {
-        user: MOCK_CURRENT_USER,
-        isPermitted,
-        userRole: MOCK_CURRENT_USER.role
-    };
-};
-// --- END MOCK AUTH HOOK ---
+// ✅ পরিবর্তন ১: আসল AuthContext থেকে useAuth ইমপোর্ট করা হলো
+import { useAuth } from '../../context/AuthContext';
+// ✅ পরিবর্তন ২: MOCK_CURRENT_USER ও মক useAuth হুক বাদ দেওয়া হলো
+import { INITIAL_PROJECTS, mockProjectMembers, PROJECT_STATUSES } from '../../utils/constants';
 
 function ProjectListPage() {
-    const { user, isPermitted } = useAuth();
-    // ✅ INITIAL_PROJECTS কন্সট্যান্ট থেকে ডেটা লোড করা হলো
+    // ✅ পরিবর্তন ৩: AuthContext থেকে user এবং hasRole প্রপার্টি নেওয়া হলো
+    const { user, hasRole } = useAuth();
+
+    // ✅ পরিবর্তন ৪: canCreateProject এখন hasRole ফাংশন ব্যবহার করে চেক করছে
+    const canCreateProject = hasRole(['admin', 'project_manager']);
+
+    // INITIAL_PROJECTS কন্সট্যান্ট থেকে ডেটা লোড করা হলো
     const [projects, setProjects] = useState(INITIAL_PROJECTS);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [projectToEdit, setProjectToEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // ✅ FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
+    // FR-8: নতুন স্টেট যোগ করা হলো ফিল্টারিংয়ের জন্য
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [filterStatus, setFilterStatus] = useState('All'); // 'All', 'To Do', 'In Progress', 'Completed'
-    const [filterAssignment, setFilterAssignment] = useState('Assigned to me'); // 'Assigned to me', 'All'
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [filterAssignment, setFilterAssignment] = useState('Assigned to me');
 
     // FR-5 & FR-7: New Project Save/Edit Handler
     const handleSaveProject = (projectData, isEditing) => {
@@ -59,6 +45,7 @@ function ProjectListPage() {
                 id: newId,
                 status: 'To Do',
                 progress: 0,
+                // user?.name এখন AuthContext থেকে আসছে
                 manager: `${user?.name || 'Current User'} (PM)`
             };
             setProjects((prevProjects) => [...prevProjects, newProject]);
@@ -74,31 +61,26 @@ function ProjectListPage() {
         setIsModalOpen(true);
     };
 
-    // ✅ FR-7: Delete Project Handler (Custom Modal Placeholder)
+    // FR-7: Delete Project Handler (Custom Modal Placeholder)
     const handleDeleteProject = (projectId) => {
-        // ⚠️ CRITICAL CHANGE: window.confirm/alert বাদ দেওয়া হলো।
-        // প্রোডাকশনে ব্যবহারের জন্য এখানে অবশ্যই একটি কাস্টম কনফার্মেশন মোডাল রেন্ডার করতে হবে।
         console.warn(
             'Deletion attempted. A custom modal is required before permanent deletion. Simulating confirmation...'
         );
 
-        // --- START: Temporary Simulated Deletion Logic ---
-        // ধরে নেওয়া হলো ইউজার কাস্টম মোডালে "Confirm" করেছেন
         setProjects((prevProjects) => prevProjects.filter((p) => p.id !== projectId));
         console.log(`Project ID ${projectId} deleted.`);
-        // --- END: Temporary Simulated Deletion Logic ---
     };
 
-    // FR-3: Check if the user is Project Manager or Admin (Now returns true via MOCK)
-    const canCreateProject = isPermitted();
-
-    // ✅ FR-8 & Filtering Logic: useMemo আপডেট করা হলো নতুন ফিল্টার স্টেটগুলির জন্য
+    // FR-8 & Filtering Logic: useMemo আপডেট করা হলো নতুন ফিল্টার স্টেটগুলির জন্য
     const filteredAndSearchedProjects = useMemo(() => {
-        const userName = user?.name || 'Alice Smith';
+        // user?.name এখন AuthContext থেকে আসছে
+        const userName = user?.name;
+
+        // user লোড না হলে, কোনো অ্যাসাইনমেন্ট ফিল্টারিং হবে না।
         let filtered = projects;
 
         // 1. Filter by User Assignment (FR-8 refinement)
-        if (filterAssignment === 'Assigned to me') {
+        if (userName && filterAssignment === 'Assigned to me') {
             filtered = filtered.filter(
                 (project) =>
                     project.manager.includes(userName) || project.members.includes(userName)
@@ -135,7 +117,7 @@ function ProjectListPage() {
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b pb-4">
                 <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">My Projects</h1>
 
-                {/* Button is now guaranteed to show because canCreateProject is true */}
+                {/* Button is shown based on AuthContext's hasRole check */}
                 {canCreateProject && (
                     <Button
                         variant="primary"
@@ -184,7 +166,7 @@ function ProjectListPage() {
                 </Button>
             </div>
 
-            {/* ✅ FR-8: Filter UI Implementaion */}
+            {/* FR-8: Filter UI Implementaion */}
             {isFilterOpen && (
                 <div className="bg-white p-4 rounded-xl shadow mb-6 border border-gray-200">
                     <p className="text-sm font-semibold text-gray-800 mb-3">
@@ -226,7 +208,7 @@ function ProjectListPage() {
                                 className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Statuses</option>
-                                {/* ✅ PROJECT_STATUSES কন্সট্যান্ট থেকে অপশনগুলি ম্যাপ করা হলো */}
+                                {/* PROJECT_STATUSES কন্সট্যান্ট থেকে অপশনগুলি ম্যাপ করা হলো */}
                                 {PROJECT_STATUSES.map((status) => (
                                     <option key={status} value={status}>
                                         {status}
@@ -270,7 +252,7 @@ function ProjectListPage() {
                         setProjectToEdit(null);
                     }}
                     onSave={handleSaveProject}
-                    // ✅ mockProjectMembers কন্সট্যান্ট থেকে ডেটা লোড করা হলো
+                    // mockProjectMembers কন্সট্যান্ট থেকে ডেটা লোড করা হলো
                     availableMembers={mockProjectMembers}
                 />
             )}

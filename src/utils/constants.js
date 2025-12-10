@@ -7,11 +7,11 @@
  * ----------------------------------------------------
  */
 export const USER_ROLES = {
-    ADMIN: 'ADMIN',
-    PROJECT_MANAGER: 'PROJECT_MANAGER', // Matches mock data
-    MEMBER: 'MEMBER',
-    DEVELOPER: 'DEVELOPER',
-    VIEWER: 'VIEWER'
+    ADMIN: 'admin',
+    PROJECT_MANAGER: 'project_manager', // Matches mock data
+    MEMBER: 'member',
+    DEVELOPER: 'developer',
+    VIEWER: 'viewer'
 };
 
 /**
@@ -30,6 +30,27 @@ export const PROJECT_STATUSES = ['To Do', 'In Progress', 'Completed', 'On Hold']
 export const MOCK_CURRENT_USER = { name: 'Alice Smith', role: USER_ROLES.PROJECT_MANAGER };
 
 /**
+ Intial mock users for authentication context
+*/
+export const INITIAL_MOCK_USERS = [
+    {
+        id: 1,
+        name: 'Alice Smith',
+        email: 'admin@project.com',
+        role: 'admin',
+        token: 'mock-admin-token',
+        password: 'password'
+    },
+    {
+        id: 2,
+        name: 'Bob Johnson',
+        email: 'manager@project.com',
+        role: 'project_manager',
+        token: 'mock-manager-token',
+        password: 'password'
+    }
+];
+/**
  * ----------------------------------------------------
  * MOCK PROJECT MEMBERS (mockProjectMembers)
  * ProjectListPage এবং আপনার দেওয়া ডেটা একত্রিত করে তৈরি করা একক তালিকা।
@@ -41,7 +62,6 @@ export const mockProjectMembers = [
     { id: 3, name: 'Chris Lee', role: 'Admin' },
     { id: 4, name: 'David Kim', role: 'Team Member' },
     { id: 5, name: 'Eve Adams', role: 'Team Member' },
-    // Charlie Brown কে আলাদা আইডি দিয়ে যোগ করা হলো যাতে ডুপ্লিকেট না হয়
     { id: 6, name: 'Charlie Brown', role: 'Team Member' }
 ];
 
