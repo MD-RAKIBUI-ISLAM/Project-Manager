@@ -208,6 +208,13 @@ export const initialTasks = [
     }
 ];
 
+// ✅ NEW: Mock Projects Data for selection - এটি ProjectListPage.jsx-এর ডেটা স্ট্রাকচার অনুসরণ করে তৈরি
+export const MOCK_PROJECTS = [
+    { id: 1, title: 'TaskMaster Core Backend' },
+    { id: 2, title: 'Frontend UI/UX Implementation' },
+    { id: 3, title: 'Database Migration & Setup' }
+];
+
 /**
  * ----------------------------------------------------
  * NAVIGATION LINKS (NFR-8)

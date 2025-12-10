@@ -3,22 +3,8 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import { TASK_PRIORITIES } from '../../utils/constants';
+import { MOCK_PROJECTS, mockProjectMembers, TASK_PRIORITIES } from '../../utils/constants';
 import Button from '../common/Button';
-
-// Mock Users Data for assignment (TaskBoard.jsx থেকে পাস করা হবে)
-const mockUsers = [
-    { id: 1, name: 'Alice Smith' },
-    { id: 2, name: 'Bob Johnson' },
-    { id: 3, name: 'Eve Adams' }
-];
-
-// ✅ NEW: Mock Projects Data for selection - এটি ProjectListPage.jsx-এর ডেটা স্ট্রাকচার অনুসরণ করে তৈরি
-const MOCK_PROJECTS = [
-    { id: 1, title: 'TaskMaster Core Backend' },
-    { id: 2, title: 'Frontend UI/UX Implementation' },
-    { id: 3, title: 'Database Migration & Setup' }
-];
 
 /**
  * Task Modal Component (FR-11)
@@ -35,7 +21,7 @@ function TaskModal({
     task,
     onClose,
     onSave,
-    projectMembers = mockUsers,
+    projectMembers = mockProjectMembers,
     availableProjects = MOCK_PROJECTS
 }) {
     const isEditing = !!task;
