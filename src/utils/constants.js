@@ -64,11 +64,27 @@ export const INITIAL_MOCK_USERS = [
         password: 'password'
     },
     {
+        id: 4,
+        name: 'David Kim',
+        email: 'david@project.com',
+        role: USER_ROLES.MEMBER,
+        token: 'mock-david-token',
+        password: 'password'
+    },
+    {
         id: 5,
         name: 'Eve Adams',
         email: 'eve@project.com',
         role: USER_ROLES.MEMBER,
         token: 'mock-eve-token',
+        password: 'password'
+    },
+    {
+        id: 6,
+        name: 'Charlie Brown',
+        email: 'charlie@project.com',
+        role: USER_ROLES.MEMBER,
+        token: 'mock-charlie-token',
         password: 'password'
     }
 ];
@@ -134,7 +150,7 @@ export const INITIAL_PROJECTS = [
         progress: 100,
         manager: 'Chris Lee (Admin)',
         managerId: 3,
-        members: [3, 4],
+        members: [3, 4, 6],
         tasks: []
     }
 ];

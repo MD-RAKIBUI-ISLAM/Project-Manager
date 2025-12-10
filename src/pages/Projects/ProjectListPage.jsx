@@ -24,8 +24,6 @@ const userMap = mockProjectMembers.reduce((acc, user) => {
 
 function ProjectListPage() {
     const { user, hasRole } = useAuth();
-    console.log('New User ID:', user?.id);
-    console.log('New User Role:', user?.role);
     const canCreateProject = hasRole(['admin', 'project_manager']);
 
     const [projects, setProjects] = useState(INITIAL_PROJECTS);
