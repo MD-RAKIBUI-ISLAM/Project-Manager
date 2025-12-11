@@ -20,6 +20,7 @@ import { useSidebar } from '../../context/SidebarContext';
 // --- Global Nav Links Data (অপরিবর্তিত) ---
 const baseNavLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Our Members', path: '/members', icon: Users },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Tasks', path: '/tasks', icon: ListTodo }
 ];

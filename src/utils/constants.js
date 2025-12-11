@@ -43,7 +43,7 @@ export const INITIAL_MOCK_USERS = [
         id: 1,
         name: 'Alice Smith',
         email: 'admin@project.com',
-        role: 'admin',
+        role: USER_ROLES.ADMIN,
         token: 'mock-admin-token',
         password: 'password'
     },
@@ -51,7 +51,7 @@ export const INITIAL_MOCK_USERS = [
         id: 2,
         name: 'Bob Johnson',
         email: 'manager@project.com',
-        role: 'project_manager',
+        role: USER_ROLES.PROJECT_MANAGER,
         token: 'mock-manager-token',
         password: 'password'
     },
@@ -59,7 +59,7 @@ export const INITIAL_MOCK_USERS = [
         id: 3,
         name: 'Chris Lee',
         email: 'chris@project.com',
-        role: USER_ROLES.ADMIN,
+        role: USER_ROLES.PROJECT_MANAGER,
         token: 'mock-chris-token',
         password: 'password'
     },
@@ -96,9 +96,9 @@ export const INITIAL_MOCK_USERS = [
  * ----------------------------------------------------
  */
 export const mockProjectMembers = [
-    { id: 1, name: 'Alice Smith', role: 'Project Manager' },
-    { id: 2, name: 'Bob Johnson', role: 'Team Member' },
-    { id: 3, name: 'Chris Lee', role: 'Admin' },
+    { id: 1, name: 'Alice Smith', role: 'Admin' },
+    { id: 2, name: 'Bob Johnson', role: 'Project Manager' },
+    { id: 3, name: 'Chris Lee', role: 'Project Manager' },
     { id: 4, name: 'David Kim', role: 'Team Member' },
     { id: 5, name: 'Eve Adams', role: 'Team Member' },
     { id: 6, name: 'Charlie Brown', role: 'Team Member' }

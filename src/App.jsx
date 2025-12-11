@@ -16,6 +16,7 @@ import NotFound from './pages/NotFound';
 import NotificationListPage from './pages/Notifications/NotificationListPage';
 import ProjectDetailsPage from './pages/Projects/ProjectDetailsPage';
 import ProjectListPage from './pages/Projects/ProjectListPage';
+import AllMembersView from './pages/Team/AllMembersView';
 // 👇 নতুন আমদানি (New Import)
 import TeamMembersPage from './pages/Team/TeamMembersPage';
 import { USER_ROLES } from './utils/constants';
@@ -41,6 +42,7 @@ function App() {
                     >
                         {/* Nested Routes inside AppLayout (Accessible by all logged-in users) */}
                         <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="members" element={<AllMembersView />} />
                         <Route path="tasks" element={<TaskBoard />} />
                         <Route path="projects" element={<ProjectListPage />} />
                         <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
