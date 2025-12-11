@@ -8,6 +8,17 @@
  */
 
 /**
+ * Images used in the application (e.g., logos, avatars).
+ */
+
+import Alice from '../assets/Alice.jpeg';
+import Bob from '../assets/Bob.avif';
+import Charlie from '../assets/Charlie.avif';
+import Chris from '../assets/Chris.webp';
+import David from '../assets/David.webp';
+import Eve from '../assets/Eve.avif';
+
+/**
  * ----------------------------------------------------
  * USER ROLES (USER_ROLES)
  * Defines the roles used for access control.
@@ -96,12 +107,12 @@ export const INITIAL_MOCK_USERS = [
  * ----------------------------------------------------
  */
 export const mockProjectMembers = [
-    { id: 1, name: 'Alice Smith', role: 'Admin' },
-    { id: 2, name: 'Bob Johnson', role: 'Project Manager' },
-    { id: 3, name: 'Chris Lee', role: 'Project Manager' },
-    { id: 4, name: 'David Kim', role: 'Team Member' },
-    { id: 5, name: 'Eve Adams', role: 'Team Member' },
-    { id: 6, name: 'Charlie Brown', role: 'Team Member' }
+    { id: 1, name: 'Alice Smith', role: 'Admin', image: Alice, description: '' },
+    { id: 2, name: 'Bob Johnson', role: 'Project Manager', image: Bob, description: '' },
+    { id: 3, name: 'Chris Lee', role: 'Project Manager', image: Chris, description: '' },
+    { id: 4, name: 'David Kim', role: 'Team Member', image: David, description: '' },
+    { id: 5, name: 'Eve Adams', role: 'Team Member', image: Eve, description: '' },
+    { id: 6, name: 'Charlie Brown', role: 'Team Member', image: Charlie, description: '' }
 ];
 
 /**
