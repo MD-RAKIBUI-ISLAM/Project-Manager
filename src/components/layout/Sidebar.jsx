@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-import TaskMasterLogo from '../../assets/sidebarlogo2.jpg';
+import TaskMasterLogo from '../../assets/sidebarlogo.jpg';
 // ✅ useAuth ঠিক আছে
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
