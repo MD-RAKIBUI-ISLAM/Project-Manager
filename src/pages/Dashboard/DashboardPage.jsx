@@ -17,49 +17,9 @@ import {
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
-
 // --- MOCK DATA (Simulating fetched data) ---
-const MOCK_DASHBOARD_DATA = {
-    totalAssignedTasks: 12,
-    completedTasks: 5,
-    inProgressTasks: 4,
-    blockedTasks: 1,
-    dueDateApproaching: 2,
-    totalProjects: 5,
-    activeProjects: 3,
-    recentActivities: [
-        { id: 1, user: 'Bob J.', action: 'marked Task #203 as done', time: '5m ago' },
-        { id: 2, user: 'You', action: 'added 3 new tasks to TaskMaster Core', time: '1h ago' },
-        { id: 3, user: 'Eve A.', action: 'commented on Task #104', time: '3h ago' }
-    ],
-    recentComments: [
-        { id: 1, user: 'Bob J.', action: 'Commented on Task #301', time: '10m ago' },
-        { id: 2, user: 'You', action: 'Mentioned @Alice in Task #201', time: '4h ago' }
-    ],
-    assignedProjects: [
-        {
-            id: 1,
-            title: 'TaskMaster Core Backend',
-            status: 'In Progress',
-            progress: 45,
-            dueDate: '2026-01-15'
-        },
-        {
-            id: 2,
-            title: 'Frontend UI/UX Implementation',
-            status: 'In Progress',
-            progress: 60,
-            dueDate: '2026-01-30'
-        },
-        {
-            id: 3,
-            title: 'Database Migration Planning',
-            status: 'To Do',
-            progress: 10,
-            dueDate: '2026-02-28'
-        }
-    ]
-};
+import { MOCK_DASHBOARD_DATA } from '../../utils/constants';
+
 // --- END MOCK DATA ---
 
 // Helper Component: Metric Card (Unchanged)
