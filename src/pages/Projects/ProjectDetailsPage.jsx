@@ -2,6 +2,7 @@
 
 import {
     Activity,
+    AlertTriangle, // ✅ আইকন যোগ করা হয়েছে
     ArrowLeft,
     Briefcase,
     Calendar,
@@ -11,7 +12,7 @@ import {
     List,
     Loader,
     Plus,
-    Trash2, // ✅ ডিলিট আইকন যোগ করা হয়েছে
+    Trash2,
     User,
     Users
 } from 'lucide-react';
@@ -21,9 +22,50 @@ import { Link, useParams } from 'react-router-dom';
 import CommentSection from '../../components/tasks/CommentSection';
 import TaskBoard from '../../components/tasks/TaskBoard';
 import TaskModal from '../../components/tasks/TaskModal';
-import { useActivity } from '../../context/ActivityContext'; // ✅ Activity Log এর জন্য
-import { useAuth } from '../../context/AuthContext'; // ✅ ইউজারের নাম পাওয়ার জন্য
+import { useActivity } from '../../context/ActivityContext';
+import { useAuth } from '../../context/AuthContext';
 import { ALL_MOCK_TASKS, INITIAL_PROJECTS, mockProjectMembers } from '../../utils/constants';
+
+// --- INLINE CONFIRMATION MODAL COMPONENT ---
+function DeleteConfirmationModal({ isOpen, onConfirm, onCancel, taskTitle }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+                <div className="p-6">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+                        Delete Task?
+                    </h3>
+                    <p className="text-sm text-center text-gray-500 mb-6">
+                        Are you sure you want to delete{' '}
+                        <span className="font-semibold text-gray-800">"{taskTitle}"</span>? This
+                        action cannot be undone.
+                    </p>
+                    <div className="flex space-x-3">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 transition-colors"
+                        >
+                            Delete Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // --- MOCK DATA UTILITIES ---
 const getProjectById = (id) => INITIAL_PROJECTS.find((p) => p.id === Number(id));
@@ -57,9 +99,7 @@ const priorityClasses = {
     low: 'text-green-600'
 };
 
-// Helper component for task list item
 function ProjectTaskItem({ task, onDelete }) {
-    // ✅ onDelete প্রপ যোগ করা হয়েছে
     const statusInfo = statusStyles[task.status] || statusStyles.to_do;
     const StatusIcon = statusInfo.icon;
 
@@ -89,8 +129,6 @@ function ProjectTaskItem({ task, onDelete }) {
                     {statusInfo.label}
                 </span>
                 <span className="text-xs text-gray-500">Due: {task.dueDate}</span>
-
-                {/* ✅ ডিলিট বাটন (শুধুমাত্র লিস্ট ভিউতে দেখাবে) */}
                 <button
                     type="button"
                     onClick={(e) => {
@@ -108,20 +146,21 @@ function ProjectTaskItem({ task, onDelete }) {
 
 function ProjectDetailPage() {
     const { projectId } = useParams();
-    const { logActivity } = useActivity(); // ✅ Activity Logger
-    const { user } = useAuth(); // ✅ Current User
+    const { logActivity } = useActivity();
+    const { user } = useAuth();
 
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
     const [viewMode, setViewMode] = useState('kanban');
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [isCommentSidebarOpen, setIsCommentSidebarOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
 
-    // --- Activity & Logic Handlers ---
+    // ✅ ডিলিট মোডালের জন্য নতুন স্টেট
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
 
     const handleSaveTask = (taskData, isEditing) => {
         setTasks((prevTasks) => {
@@ -130,8 +169,7 @@ function ProjectDetailPage() {
                 return prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData } : t));
             }
             logActivity(user?.name || 'User', 'created a new task', taskData.title);
-            const newId = Date.now();
-            return [...prevTasks, { ...taskData, id: newId, status: 'to_do' }];
+            return [...prevTasks, { ...taskData, id: Date.now(), status: 'to_do' }];
         });
         setIsTaskModalOpen(false);
         setSelectedTask(null);
@@ -139,29 +177,24 @@ function ProjectDetailPage() {
 
     const handleStatusChange = (taskId, newStatus) => {
         const task = tasks.find((t) => t.id === taskId);
-        const statusLabel = statusStyles[newStatus]?.label || newStatus;
-
-        logActivity(
-            user?.name || 'User',
-            `changed status to ${statusLabel}`,
-            task?.title || 'Task'
-        );
-
-        setTasks((prevTasks) =>
-            prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-        );
+        logActivity(user?.name || 'User', `changed status to ${newStatus}`, task?.title || 'Task');
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
     };
 
-    // ✅ নতুন ডিলিট ফাংশন
-    const handleDeleteTask = (taskId) => {
-        const taskToDelete = tasks.find((t) => t.id === taskId);
-        if (window.confirm(`Are you sure you want to delete "${taskToDelete?.title}"?`)) {
-            logActivity(
-                user?.name || 'User',
-                'deleted task',
-                taskToDelete?.title || 'Unknown Task'
-            );
-            setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    // ✅ অ্যালার্ট ছাড়া ডিলিট মোডাল ওপেন করার ফাংশন
+    const handleOpenDeleteModal = (taskId) => {
+        const task = tasks.find((t) => t.id === taskId);
+        setTaskToDelete(task);
+        setIsDeleteModalOpen(true);
+    };
+
+    // ✅ কনফার্ম হওয়ার পর আসল ডিলিট করার ফাংশন
+    const confirmDeleteTask = () => {
+        if (taskToDelete) {
+            logActivity(user?.name || 'User', 'deleted task', taskToDelete.title);
+            setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+            setIsDeleteModalOpen(false);
+            setTaskToDelete(null);
         }
     };
 
@@ -170,21 +203,15 @@ function ProjectDetailPage() {
         setIsTaskModalOpen(true);
     };
 
-    const handleOpenCommentSection = (task) => {
-        setSelectedTask(task);
-        setIsCommentSidebarOpen(true);
-    };
-
     useEffect(() => {
         setLoading(true);
         const rawProject = getProjectById(projectId);
         if (rawProject) {
-            const finalProject = {
+            setProject({
                 ...rawProject,
                 manager: getManagerData(rawProject.managerId, mockProjectMembers),
                 members: mapMemberData(rawProject.members, mockProjectMembers)
-            };
-            setProject(finalProject);
+            });
             setTasks(getTasksByProject(rawProject.tasks));
         } else {
             setError('Project not found.');
@@ -192,7 +219,6 @@ function ProjectDetailPage() {
         setLoading(false);
     }, [projectId]);
 
-    // ... (Loading and Error states remain exactly as your code)
     if (loading)
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -210,12 +236,6 @@ function ProjectDetailPage() {
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter((t) => t.status === 'done').length;
     const pendingTasks = totalTasks - completedTasks;
-    const progressColor =
-        project.progress === 100
-            ? 'bg-green-500'
-            : project.progress > 50
-              ? 'bg-indigo-500'
-              : 'bg-yellow-500';
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -240,7 +260,7 @@ function ProjectDetailPage() {
                         <p className="text-3xl font-bold text-indigo-800">{project.progress}%</p>
                         <div className="w-full bg-indigo-200 rounded-full h-2 mt-2">
                             <div
-                                className={`h-2 rounded-full ${progressColor}`}
+                                className="h-2 rounded-full bg-indigo-500"
                                 style={{ width: `${project.progress}%` }}
                             />
                         </div>
@@ -289,17 +309,6 @@ function ProjectDetailPage() {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center text-sm text-gray-700">
-                            <Activity className="w-5 h-5 mr-3 text-indigo-500 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold">Current Status</p>
-                                <p
-                                    className={`font-bold ${project.status === 'Completed' ? 'text-green-600' : 'text-blue-600'}`}
-                                >
-                                    {project.status}
-                                </p>
-                            </div>
-                        </div>
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3 border-t pt-4 flex items-center">
                         <Users className="w-5 h-5 mr-2 text-indigo-500" /> Team Members (
@@ -322,7 +331,7 @@ function ProjectDetailPage() {
 
                 {/* Column 2 & 3: Task View */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl overflow-hidden">
                         <div className="flex justify-between items-center border-b pb-4 mb-4">
                             <h2 className="text-2xl font-bold text-gray-800 flex items-center">
                                 {viewMode === 'kanban' ? (
@@ -337,14 +346,14 @@ function ProjectDetailPage() {
                                     <button
                                         type="button"
                                         onClick={() => setViewMode('kanban')}
-                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-l-lg transition-colors border ${viewMode === 'kanban' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border ${viewMode === 'kanban' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}
                                     >
                                         <Kanban className="w-4 h-4 mr-2" /> Kanban
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setViewMode('list')}
-                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-r-lg transition-colors border ${viewMode === 'list' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}
                                     >
                                         <List className="w-4 h-4 mr-2" /> List
                                     </button>
@@ -352,24 +361,30 @@ function ProjectDetailPage() {
                                 <button
                                     type="button"
                                     onClick={() => handleOpenTaskModal(null)}
-                                    className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
+                                    className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
                                 >
                                     <Plus className="w-5 h-5 mr-2" /> New Task
                                 </button>
                             </div>
                         </div>
 
+                        {/* Kanban View & List View */}
                         <div className="min-h-[400px]">
                             {viewMode === 'kanban' ? (
-                                <div className="py-4">
-                                    <TaskBoard
-                                        tasks={tasks}
-                                        projectMembers={project.members}
-                                        onStatusChange={handleStatusChange}
-                                        onEditTask={handleOpenTaskModal}
-                                        onDeleteTask={handleDeleteTask} // ✅ কানবানের জন্য ডিলিট লজিক পাস
-                                        onOpenComments={handleOpenCommentSection}
-                                    />
+                                <div className="overflow-x-auto py-4">
+                                    <div className="min-w-max">
+                                        <TaskBoard
+                                            tasks={tasks}
+                                            projectMembers={project.members}
+                                            onStatusChange={handleStatusChange}
+                                            onEditTask={handleOpenTaskModal}
+                                            onDeleteTask={handleOpenDeleteModal} // ✅ বোর্ড ভিউ এর জন্যও আপডেট করা হয়েছে
+                                            onOpenComments={(t) => {
+                                                setSelectedTask(t);
+                                                setIsCommentSidebarOpen(true);
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-1 py-4">
@@ -379,18 +394,17 @@ function ProjectDetailPage() {
                                                 key={task.id}
                                                 type="button"
                                                 onClick={() => handleOpenTaskModal(task)}
-                                                className="w-full p-0 border-none bg-transparent appearance-none text-left"
+                                                className="w-full text-left focus:outline-none"
                                             >
                                                 <ProjectTaskItem
                                                     task={task}
-                                                    onDelete={handleDeleteTask}
-                                                />{' '}
-                                                {/* ✅ লিস্টের জন্য ডিলিট লজিক পাস */}
+                                                    onDelete={handleOpenDeleteModal} // ✅ লিস্ট ভিউ এর জন্য আপডেট
+                                                />
                                             </button>
                                         ))
                                     ) : (
                                         <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                                            <p>No tasks found for this project yet.</p>
+                                            No tasks found for this project yet.
                                         </div>
                                     )}
                                 </div>
@@ -409,15 +423,24 @@ function ProjectDetailPage() {
                     projectMembers={project.members}
                 />
             )}
+
             {isCommentSidebarOpen && selectedTask && (
                 <CommentSection
                     task={selectedTask}
-                    onClose={() => {
-                        setIsCommentSidebarOpen(false);
-                        setSelectedTask(null);
-                    }}
+                    onClose={() => setIsCommentSidebarOpen(false)}
                 />
             )}
+
+            {/* ✅ ইনলাইন ডিলিট মোডাল রেন্ডার */}
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                taskTitle={taskToDelete?.title}
+                onConfirm={confirmDeleteTask}
+                onCancel={() => {
+                    setIsDeleteModalOpen(false);
+                    setTaskToDelete(null);
+                }}
+            />
         </div>
     );
 }

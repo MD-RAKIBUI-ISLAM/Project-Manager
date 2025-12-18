@@ -1,6 +1,6 @@
 // src/pages/Tasks/TaskBoard.jsx
 
-import { Plus } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 // ✅ Activity এবং Auth Context ইমপোর্ট করা হলো
@@ -19,13 +19,58 @@ import TaskCard from './TaskCard';
 import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
+// --- INLINE CONFIRMATION MODAL ---
+function DeleteConfirmationModal({ isOpen, onConfirm, onCancel, taskTitle }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+                <div className="p-6">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+                        Delete Task?
+                    </h3>
+                    <p className="text-sm text-center text-gray-500 mb-6">
+                        Are you sure you want to delete{' '}
+                        <span className="font-semibold text-gray-800">"{taskTitle}"</span>? This
+                        action cannot be undone.
+                    </p>
+                    <div className="flex space-x-3">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 transition-colors"
+                        >
+                            Delete Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function TaskBoard() {
     const { user, role } = useAuth();
-    const { logActivity } = useActivity(); // ✅ Activity logger initialization
+    const { logActivity } = useActivity();
 
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState(null);
+
+    // ✅ ইনলাইন কনফার্মেশনের জন্য নতুন স্টেট
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
 
     const [filters, setFilters] = useState({
         priority: null,
@@ -38,28 +83,32 @@ function TaskBoard() {
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [taskForComments, setTaskForComments] = useState(null);
 
-    // ✅ ডিলিট টাস্ক হ্যান্ডলার (অ্যাক্টিভিটি লগসহ)
-    const handleDeleteTask = (taskId) => {
-        const taskToDelete = tasks.find((t) => t.id === taskId);
-        if (window.confirm(`Are you sure you want to delete "${taskToDelete?.title}"?`)) {
-            // অ্যাক্টিভিটি লগ
+    // ✅ ১. ডিলিট মোডাল ওপেন করার হ্যান্ডলার (অ্যালার্ট সরানো হয়েছে)
+    const handleOpenDeleteModal = (taskId) => {
+        const task = tasks.find((t) => t.id === taskId);
+        setTaskToDelete(task);
+        setIsDeleteModalOpen(true);
+    };
+
+    // ✅ ২. আসল ডিলিট কনফার্ম করার হ্যান্ডলার
+    const confirmDeleteTask = () => {
+        if (taskToDelete) {
             logActivity(
                 user?.name || 'User',
                 'deleted task',
                 taskToDelete?.title || 'Unknown Task'
             );
-
-            setTasks((prev) => prev.filter((t) => t.id !== taskId));
+            setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+            setIsDeleteModalOpen(false);
+            setTaskToDelete(null);
         }
     };
 
-    // টাস্ক স্ট্যাটাস পরিবর্তন হ্যান্ডলার
     const handleStatusChange = (taskId, newStatusValue) => {
         const task = tasks.find((t) => t.id === taskId);
         const statusLabel =
             TASK_STATUSES.find((s) => s.value === newStatusValue)?.label || newStatusValue;
 
-        // অ্যাক্টিভিটি লগ
         logActivity(user?.name || 'User', `moved task to ${statusLabel}`, task?.title || 'Task');
 
         setTasks((prevTasks) =>
@@ -67,7 +116,6 @@ function TaskBoard() {
         );
     };
 
-    // সেভ টাস্ক হ্যান্ডলার
     const handleSaveTask = (taskData, isEditing) => {
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
@@ -215,7 +263,7 @@ function TaskBoard() {
                                     task={task}
                                     onEdit={handleEditTask}
                                     onStatusChange={handleStatusChange}
-                                    onDelete={handleDeleteTask} // ✅ Delete handler পাঠানো হলো
+                                    onDelete={handleOpenDeleteModal} // ✅ এখানে handleOpenDeleteModal দেওয়া হলো
                                     onCommentClick={handleOpenComments}
                                 />
                             ))}
@@ -229,6 +277,7 @@ function TaskBoard() {
                 ))}
             </div>
 
+            {/* --- Modals --- */}
             {isModalOpen && (
                 <TaskModal
                     task={taskToEdit}
@@ -250,6 +299,17 @@ function TaskBoard() {
                     }}
                 />
             )}
+
+            {/* ✅ ইনলাইন ডিলিট কনফার্মেশন মোডাল */}
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                taskTitle={taskToDelete?.title}
+                onConfirm={confirmDeleteTask}
+                onCancel={() => {
+                    setIsDeleteModalOpen(false);
+                    setTaskToDelete(null);
+                }}
+            />
         </div>
     );
 }
