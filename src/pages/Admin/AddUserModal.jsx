@@ -6,23 +6,33 @@ import { useState } from 'react';
 import Button from '../../components/common/Button';
 import { USER_ROLES } from '../../utils/constants';
 
+/**
+ * BACKEND TEAM INTEGRATION GUIDE:
+ * 1. PASSWORD SECURITY: Do NOT store the 'password' in plain text. Use a hashing library like bcrypt.
+ * 2. VALIDATION: Ensure the backend validates:
+ * - Email uniqueness (check if user already exists).
+ * - Password strength (minimum length, complexity).
+ * 3. RESPONSE: Return the newly created user object (excluding the password) or an appropriate error message.
+ */
+
 function AddUserModal({ onClose, onSave }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState(''); // <--- NEW: পাসওয়ার্ড স্টেট যোগ করা হলো
-    const [role, setRole] = useState(USER_ROLES.MEMBER); // ডিফল্ট 'MEMBER' সেট করা হলো
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState(USER_ROLES.MEMBER);
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
         // Validation check
-        if (!name || !email || !password) return; // <--- Validation-এ password যোগ করা হলো
+        if (!name || !email || !password) return;
 
         // onSave-এ password পাঠানো হচ্ছে
-        onSave({ name, email, role, password }); // <--- পরিবর্তন: password যুক্ত করা হলো
+        // BACKEND TEAM: This object will be sent via POST /api/admin/users
+        onSave({ name, email, role, password });
     };
 
     return (
-        // Modal Overlay (Tailwind CSS for full-screen dim background)
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
                 {/* Header */}
@@ -61,7 +71,7 @@ function AddUserModal({ onClose, onSave }) {
                             required
                         />
                     </div>
-                    {/* NEW: Password Field */}
+                    {/* Password Field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">
                             Password (Initial)
@@ -71,6 +81,7 @@ function AddUserModal({ onClose, onSave }) {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="mt-1 w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Enter temporary password"
                             required
                         />
                     </div>

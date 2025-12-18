@@ -24,6 +24,11 @@ import TaskModal from '../../components/tasks/TaskModal';
 import { ALL_MOCK_TASKS, INITIAL_PROJECTS, mockProjectMembers } from '../../utils/constants';
 
 // --- MOCK DATA UTILITIES ---
+/**
+ * @BACKEND_TEAM_NOTE:
+ * বর্তমানে এই ইউটিলিটি ফাংশনগুলো লোকাল কনস্ট্যান্ট থেকে ডেটা ফিল্টার করছে।
+ * ইন্টিগ্রেশনের সময় এই লজিকগুলো সরাসরি API এন্ডপয়েন্টে (GET /projects/:id) স্থানান্তরিত হবে।
+ */
 
 const getProjectById = (id) => INITIAL_PROJECTS.find((p) => p.id === Number(id));
 
@@ -115,6 +120,12 @@ function ProjectDetailPage() {
     // --- Task Handlers (Mock Implementation) ---
     const handleSaveTask = (taskData, isEditing) => {
         // In a real app, this calls an API and re-fetches tasks.
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * - isEditing == true হলে: PATCH/PUT `/api/tasks/${taskData.id}` কল করুন।
+         * - isEditing == false হলে: POST `/api/projects/${projectId}/tasks` কল করুন।
+         * ডেটা সেভ হওয়ার পর `setTasks` আপডেট করুন অথবা পুনরায় ফেচ করুন।
+         */
         console.log(`[MOCK API] Saving task: ${isEditing ? 'Editing' : 'Creating'}`, taskData);
 
         setTasks((prevTasks) => {
@@ -133,6 +144,11 @@ function ProjectDetailPage() {
 
     const handleStatusChange = (taskId, newStatus) => {
         // In a real app, this calls an API to update status (FR-12)
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * কানবান বোর্ডে ড্র্যাগ এন্ড ড্রপ বা স্ট্যাটাস চেঞ্জের সময়:
+         * PATCH `/api/tasks/${taskId}/status` কল করুন যেখানে body হবে { status: newStatus }।
+         */
         console.log(`[MOCK API] Task ${taskId} status changed to ${newStatus}`);
 
         setTasks((prevTasks) =>
@@ -158,6 +174,12 @@ function ProjectDetailPage() {
         setLoading(true);
         setError(null);
 
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * এখানে GET `/api/projects/${projectId}` কল করতে হবে।
+         * রেসপন্স-এ অবশ্যই প্রজেক্টের সাথে সংশ্লিষ্ট tasks, manager এবং member details
+         * (Nested objects/Populated data) থাকতে হবে।
+         */
         const rawProject = getProjectById(projectId);
 
         if (rawProject) {
@@ -388,37 +410,42 @@ function ProjectDetailPage() {
                         </div>
 
                         {/* Task Content Area */}
-                        {viewMode === 'kanban' ? (
-                            <div className="py-4">
-                                <TaskBoard
-                                    tasks={tasks}
-                                    projectMembers={project.members}
-                                    onStatusChange={handleStatusChange}
-                                    onEditTask={handleOpenTaskModal}
-                                    onOpenComments={handleOpenCommentSection}
-                                />
-                            </div>
-                        ) : (
-                            // List View
-                            <div className="space-y-1 py-4">
-                                {tasks.length > 0 ? (
-                                    tasks.map((task) => (
-                                        <button
-                                            key={task.id}
-                                            type="button"
-                                            onClick={() => handleOpenTaskModal(task)}
-                                            className="w-full p-0 border-none bg-transparent appearance-none text-left"
-                                        >
-                                            <ProjectTaskItem task={task} />
-                                        </button>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                                        <p>No tasks found for this project yet.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <div className="min-h-[400px]">
+                            {/* @BACKEND_TEAM_NOTE: 
+                            টাস্ক ফিল্টারিং বা সার্চ বার যোগ করলে এন্ডপয়েন্টে কুয়েরি প্যারামস (?status=done) পাঠাতে হবে।
+                        */}
+                            {viewMode === 'kanban' ? (
+                                <div className="py-4">
+                                    <TaskBoard
+                                        tasks={tasks}
+                                        projectMembers={project.members}
+                                        onStatusChange={handleStatusChange}
+                                        onEditTask={handleOpenTaskModal}
+                                        onOpenComments={handleOpenCommentSection}
+                                    />
+                                </div>
+                            ) : (
+                                // List View
+                                <div className="space-y-1 py-4">
+                                    {tasks.length > 0 ? (
+                                        tasks.map((task) => (
+                                            <button
+                                                key={task.id}
+                                                type="button"
+                                                onClick={() => handleOpenTaskModal(task)}
+                                                className="w-full p-0 border-none bg-transparent appearance-none text-left"
+                                            >
+                                                <ProjectTaskItem task={task} />
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                                            <p>No tasks found for this project yet.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

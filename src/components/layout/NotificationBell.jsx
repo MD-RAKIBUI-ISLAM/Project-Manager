@@ -1,31 +1,42 @@
+// src/components/layout/NotificationBell.jsx
+
 import { Bell } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useNotifications } from '../../context/NotificationContext';
 
+/**
+ * @BACKEND_TEAM_NOTE:
+ * ১. Real-time Updates: এই সেকশনটি Socket.io বা Server-Sent Events (SSE) ব্যবহার করার জন্য উপযুক্ত।
+ * ২. API Endpoints:
+ * - GET /api/notifications (Fetch recent)
+ * - PATCH /api/notifications/:id/read (Mark single as read)
+ * - PATCH /api/notifications/read-all (Mark all as read)
+ * ৩. Data Structure: প্রতিটি নোটিফিকেশনে 'link' (যেমন: /projects/1) এবং 'timestamp' থাকা আবশ্যক।
+ */
+
 function NotificationBell() {
     const { notifications, unreadCount, markAsRead, loading } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // শুধু সাম্প্রতিক 5টি নোটিফিকেশন দেখানোর জন্য ফিল্টার
+    // প্রদর্শনের জন্য সাম্প্রতিক ৫টি
     const recentNotifications = notifications.slice(0, 5);
 
     const toggleDropdown = () => setIsOpen((prev) => !prev);
 
-    // Due to the scope, we will omit the outside click logic for brevity.
-
     const handleBellClick = () => {
         toggleDropdown();
-        // Option to mark all *displayed* items as read when the bell is opened
+        /** * @BACKEND_INTEGRATION:
+         * বেল আইকন ক্লিক করলে 'PATCH /api/notifications/mark-seen' কল করা যেতে পারে
+         * যাতে ডাটাবেজে এগুলোকে 'Seen' হিসেবে চিহ্নিত করা যায়।
+         */
     };
 
-    // ✅ FIX: 'link' প্যারামিটারটি সরিয়ে দেওয়া হলো, কারণ এটি ফাংশনের ভেতরে ব্যবহৃত হচ্ছে না।
     const handleNotificationClick = (id) => {
-        markAsRead(id);
+        markAsRead(id); // @BACKEND_CALL: PATCH /api/notifications/:id
         setIsOpen(false);
-        // Navigate to the link (will be handled by Link component)
     };
 
     return (
@@ -33,68 +44,81 @@ function NotificationBell() {
             <button
                 type="button"
                 onClick={handleBellClick}
-                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition relative"
-                aria-label="Notifications"
+                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition relative outline-none"
             >
                 <Bell className="w-6 h-6" />
-                {/* Unread Badge (FR-19) */}
+
+                {/* Unread Badge (Backend: unread_count field) */}
                 {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-                        {unreadCount}
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 z-30">
-                    <div className="p-4 border-b">
-                        <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+                <div className="absolute right-0 mt-3 w-80 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 z-50 overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 bg-gray-50/50 flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+                        {unreadCount > 0 && (
+                            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                                {unreadCount} New
+                            </span>
+                        )}
                     </div>
 
                     {loading && (
-                        <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
-                    )}
-
-                    {!loading && recentNotifications.length === 0 && (
-                        <div className="p-4 text-center text-sm text-gray-500">
-                            No new notifications.
+                        <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 mx-auto" />
                         </div>
                     )}
 
-                    <div className="py-1 max-h-72 overflow-y-auto">
+                    {!loading && recentNotifications.length === 0 && (
+                        <div className="p-8 text-center text-sm text-gray-400 italic">
+                            No notifications yet.
+                        </div>
+                    )}
+
+                    <div className="py-1 max-h-80 overflow-y-auto">
                         {recentNotifications.map((n) => (
                             <Link
                                 key={n.id}
-                                to={n.link} // Link to related task/project (FR-17)
-                                // ✅ onClick এ শুধু id পাস করা হচ্ছে
+                                to={n.link}
                                 onClick={() => handleNotificationClick(n.id)}
-                                className={`block px-4 py-3 text-sm transition ${
+                                className={`block px-4 py-3 text-sm transition-colors border-l-4 ${
                                     n.is_read
-                                        ? 'text-gray-500 hover:bg-gray-50'
-                                        : 'text-gray-700 font-medium bg-indigo-50 hover:bg-indigo-100'
+                                        ? 'border-transparent text-gray-500 hover:bg-gray-50'
+                                        : 'border-indigo-600 text-gray-900 font-semibold bg-indigo-50/30 hover:bg-indigo-50'
                                 }`}
                             >
-                                <p>
-                                    <span className="font-semibold">{n.actor}</span> {n.verb}{' '}
-                                    <span className="text-indigo-600">{n.relatedObject}</span>
+                                <p className="leading-tight">
+                                    <span className="text-indigo-700">{n.actor}</span> {n.verb}{' '}
+                                    <span className="font-bold text-gray-700">
+                                        {n.relatedObject}
+                                    </span>
                                 </p>
-                                <p className="text-xs mt-1 text-gray-400">
-                                    {new Date(n.timestamp).toLocaleTimeString()}
+                                <p className="text-[10px] mt-1.5 text-gray-400 flex items-center">
+                                    {/* @BACKEND_TEAM: 'n.timestamp' ISO ফরম্যাটে হওয়া উচিত (যেমন: 2023-10-27T...) */}
+                                    {new Date(n.timestamp).toLocaleDateString()} •{' '}
+                                    {new Date(n.timestamp).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
                                 </p>
                             </Link>
                         ))}
                     </div>
 
-                    {/* Footer Link */}
+                    {/* Footer */}
                     {notifications.length > 0 && (
-                        <div className="p-2 border-t text-center">
+                        <div className="p-3 bg-gray-50 text-center">
                             <Link
-                                to="/notifications" // Full Notification Page Link
+                                to="/notifications"
                                 onClick={() => setIsOpen(false)}
-                                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-bold tracking-wide"
                             >
-                                See All Notifications
+                                VIEW ALL ACTIVITY
                             </Link>
                         </div>
                     )}

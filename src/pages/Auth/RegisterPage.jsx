@@ -10,6 +10,15 @@ import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
 import { useAuth } from '../../context/AuthContext';
 
+/**
+ * BACKEND TEAM INTEGRATION GUIDE:
+ * 1. ENDPOINT: Use POST /api/auth/register.
+ * 2. REQUEST BODY: Server must accept { full_name, email, password, role }.
+ * 3. ROLE HANDLING: Ensure the backend validates the 'role' string against
+ * allowed enum values (e.g., 'admin', 'project_manager', 'developer').
+ * 4. SECURITY: Backend should hash the password before saving to the database.
+ */
+
 // Validation Schema
 const registerSchema = yup.object().shape({
     full_name: yup.string().required('Full name is required'),
@@ -48,6 +57,7 @@ function RegisterPage() {
 
         try {
             // ✅ চূড়ান্ত ফিক্স: authRegister ফাংশনে data.role আর্গুমেন্টটি পাস করা হলো।
+            // BACKEND TEAM: The authRegister should map these parameters to the POST request.
             const result = await authRegister(data.full_name, data.email, data.password, data.role);
 
             if (result && result.success) {
@@ -147,7 +157,7 @@ function RegisterPage() {
                             error={errors.password2}
                         />
                         <InputField
-                            label="Role (e.g., admin, project_manager, member)"
+                            label="Role (e.g., admin, project_manager, developer)"
                             name="role"
                             {...register('role')}
                             error={errors.role}

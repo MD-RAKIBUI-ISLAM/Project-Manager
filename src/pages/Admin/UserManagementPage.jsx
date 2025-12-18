@@ -9,6 +9,16 @@ import { USER_ROLES } from '../../utils/constants';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
 
+/**
+ * BACKEND TEAM INTEGRATION GUIDE:
+ * 1. AUTHORIZATION: All endpoints (GET /users, PATCH /users/:id, DELETE /users/:id)
+ * must be protected by server-side 'isAdmin' middleware.
+ * 2. SELF-ACTION PREVENTION: Backend must prevent an admin from deleting themselves
+ * or changing their own role to avoid system lockout.
+ * 3. RELATIONSHIPS: Ensure logic handles what happens to projects/tasks assigned
+ * to a user when that user is deleted.
+ */
+
 // --- Helper Components (RoleBadge and StatusIndicator remain the same) ---
 function RoleBadge({ role }) {
     let color = 'bg-gray-200 text-gray-800';
@@ -109,7 +119,6 @@ function UserManagementPage() {
                 await loadUsers();
                 setSuccessMessage(`Role for user ID **${userId}** updated to **${newRole}**.`);
             } else {
-                // alert(`Error updating role: ${result.error}`); // ❌ REMOVED
                 setErrorMessage(
                     `Error updating role: ${result.error || 'An unknown error occurred.'}`
                 );
@@ -145,7 +154,6 @@ function UserManagementPage() {
             // ✅ inline notification সেট করা হয়েছে
             setSuccessMessage(`User **${userName}** successfully deleted.`);
         } else {
-            // alert(`Error deleting user: ${result.error}`); // ❌ REMOVED
             setErrorMessage(
                 `Error deleting user **${userName}**: ${result.error || 'An unknown error occurred.'}`
             );
@@ -198,10 +206,8 @@ function UserManagementPage() {
                 await loadUsers();
                 setIsEditModalOpen(false);
                 setUserToEdit(null);
-                // alert(`User ${updatedUserData.name} updated successfully!`); // ❌ REMOVED
                 setSuccessMessage(`User **${updatedUserData.name}** updated successfully!`);
             } else {
-                // alert(`Error updating user: ${result.error}`); // ❌ REMOVED
                 setErrorMessage(
                     `Error updating user **${updatedUserData.name}**: ${result.error || 'An unknown error occurred.'}`
                 );

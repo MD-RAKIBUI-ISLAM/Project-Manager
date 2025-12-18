@@ -4,6 +4,24 @@ import { Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { useNotifications } from '../../context/NotificationContext';
 
+/**
+ * 🛠️ BACKEND INTEGRATION NOTES (FOR NOTIFICATIONS):
+ * --------------------------------------------------
+ * 1. CONTEXT: This page uses NotificationContext for data.
+ * 2. DATA FIELDS NEEDED (per notification object):
+ * - id: Unique identifier.
+ * - actor: Name of the person who triggered the action.
+ * - verb: The action performed (e.g., "commented on", "assigned").
+ * - relatedObject: Name of the task or project.
+ * - timestamp: ISO date string for sorting/display.
+ * - link: Internal route to the specific task/project.
+ * - is_read: Boolean status.
+ * 3. API ENDPOINTS:
+ * - GET /api/notifications (Fetch list)
+ * - PATCH /api/notifications/:id/read (Mark single)
+ * - POST /api/notifications/mark-all-read (Bulk action)
+ */
+
 function NotificationListPage() {
     const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
 

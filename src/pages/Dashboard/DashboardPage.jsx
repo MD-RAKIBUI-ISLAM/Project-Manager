@@ -20,7 +20,22 @@ import { useAuth } from '../../context/AuthContext';
 // --- MOCK DATA (Simulating fetched data) ---
 import { MOCK_DASHBOARD_DATA } from '../../utils/constants';
 
-// --- END MOCK DATA ---
+/**
+ * 🛠️ BACKEND INTEGRATION NOTES (FOR DEVELOPERS):
+ * --------------------------------------------------
+ * 1. API: Fetch dashboard stats from GET `/api/v1/dashboard/summary`
+ * 2. DATA STRUCTURE: The 'data' state expects:
+ * - totalAssignedTasks: number
+ * - completedTasks: number
+ * - inProgressTasks: number
+ * - dueDateApproaching: number (count of tasks near deadline)
+ * - activeProjects: number (for admin/manager)
+ * - assignedProjects: Array<{id, title, status, progress, dueDate}>
+ * - recentComments: Array<{user, action, time}>
+ * - recentActivities: Array<{user, action, time}>
+ * 3. SEARCH/FILTER: Implement server-side filtering for the search bar
+ * and advanced filter dropdowns if data volume is high.
+ */
 
 // Helper Component: Metric Card (Unchanged)
 function MetricCard({ title, value, icon: Icon, colorClass, description }) {
@@ -83,7 +98,6 @@ function ProjectProgressCard({ project }) {
 function AdvancedFilters() {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
-            {/* Filter 1: Status */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 <option>Status: All</option>
                 <option>Completed</option>
@@ -91,7 +105,6 @@ function AdvancedFilters() {
                 <option>To Do</option>
             </select>
 
-            {/* Filter 2: Priority */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 <option>Priority: All</option>
                 <option>High</option>
@@ -99,14 +112,12 @@ function AdvancedFilters() {
                 <option>Low</option>
             </select>
 
-            {/* Filter 3: Assignee */}
             <select className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 <option>Assignee: Me</option>
                 <option>Bob J.</option>
                 <option>Eve A.</option>
             </select>
 
-            {/* Filter 4: Due Date */}
             <input
                 type="date"
                 className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 focus:border-indigo-500"
@@ -126,6 +137,7 @@ function ProjectDashboard() {
 
     useEffect(() => {
         if (user) {
+            // 🔄 API CALL: Replace this timeout with your axios/fetch logic
             setTimeout(() => {
                 setData(MOCK_DASHBOARD_DATA);
                 setLoading(false);
@@ -151,9 +163,7 @@ function ProjectDashboard() {
 
     return (
         <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans">
-            {/* 🚀 Modified Section: Header will only keep the Welcome Message and take full width */}
             <div className="mb-6 md:mb-8">
-                {/* Header and Welcome Message (Full Width) */}
                 <div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">
                         👋 Welcome, {user.name || user.email}
@@ -164,12 +174,9 @@ function ProjectDashboard() {
                     </p>
                 </div>
             </div>
-            {/* 🚀 Modified Section End */}
 
-            {/* --- Global Search and Filtering (FR-15 Implementation) --- */}
             <div className="mb-8 p-4 bg-white rounded-2xl shadow-xl border border-indigo-100">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    {/* Search Input (Unchanged) */}
                     <div className="relative w-full sm:flex-grow">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -178,7 +185,6 @@ function ProjectDashboard() {
                             className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
                         />
                     </div>
-                    {/* Filter Toggle Button (Unchanged) */}
                     <button
                         type="button"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -203,15 +209,11 @@ function ProjectDashboard() {
                     </button>
                 </div>
 
-                {/* Advanced Filter Area (Collapsible) (Unchanged) */}
                 {showAdvancedFilters && <AdvancedFilters />}
             </div>
 
-            {/* --- 1. Top Metrics Grid (Fix: XL grid adjusted to 4) --- */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
                 {' '}
-                {/* ✅ xl:grid-cols-5 to xl:grid-cols-4 adjusted */}
-                {/* 1. Total Assigned Tasks */}
                 <MetricCard
                     title="Total Assigned Tasks"
                     value={data.totalAssignedTasks}
@@ -219,7 +221,6 @@ function ProjectDashboard() {
                     colorClass="text-indigo-600"
                     description="Total tasks currently assigned to you"
                 />
-                {/* 2. Completed Tasks */}
                 <MetricCard
                     title="Completed"
                     value={data.completedTasks}
@@ -227,7 +228,6 @@ function ProjectDashboard() {
                     colorClass="text-green-600"
                     description="Tasks completed to date"
                 />
-                {/* 3. In Progress Tasks */}
                 <MetricCard
                     title="In Progress"
                     value={data.inProgressTasks}
@@ -235,7 +235,6 @@ function ProjectDashboard() {
                     colorClass="text-sky-600"
                     description="Currently active tasks"
                 />
-                {/* 4. Completion Rate */}
                 <MetricCard
                     title="Completion Rate"
                     value={`${completionRate}%`}
@@ -243,7 +242,6 @@ function ProjectDashboard() {
                     colorClass="text-purple-600"
                     description="Ratio of completed to total tasks"
                 />
-                {/* 5. Projects Overview (Manager/Admin View) - This remains the fifth card if the role is Manager/Admin */}
                 {isManagerOrAdmin && (
                     <MetricCard
                         title="Active Projects"
@@ -255,11 +253,8 @@ function ProjectDashboard() {
                 )}
             </div>
 
-            {/* --- 2. Main Content Layout (Unchanged) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Column 1: Critical and Assigned Tasks (2/3 width on desktop) */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Critical Tasks Card (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl border-l-4 border-red-500">
                         <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center border-b pb-2">
                             <Clock className="w-5 h-5 mr-2" /> Upcoming Deadlines
@@ -279,7 +274,6 @@ function ProjectDashboard() {
                         )}
                     </div>
 
-                    {/* Assigned Projects Quick Access (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <Target className="w-5 h-5 mr-2 text-indigo-500" /> Your Projects
@@ -292,9 +286,7 @@ function ProjectDashboard() {
                     </div>
                 </div>
 
-                {/* Column 2: Recent Comments & Activity Log (1/3 width on desktop) */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Recent Comments/Mentions (FR-18 Placeholder) (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-64 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <MessageSquare className="w-5 h-5 mr-2 text-red-500" /> Recent
@@ -326,7 +318,6 @@ function ProjectDashboard() {
                         </ul>
                     </div>
 
-                    {/* Existing Recent Activity Log (FR-7) (Unchanged) */}
                     <div className="bg-white p-6 rounded-2xl shadow-xl h-96 overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                             <Activity className="w-5 h-5 mr-2 text-sky-500" /> Recent Activity

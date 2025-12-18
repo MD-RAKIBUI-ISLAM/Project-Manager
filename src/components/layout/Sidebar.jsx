@@ -1,4 +1,4 @@
-// src/layout/Sidebar.jsx (UPDATED & FIXED)
+// src/layout/Sidebar.jsx
 
 import {
     Briefcase,
@@ -12,12 +12,17 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 import TaskMasterLogo from '../../assets/sidebarlogo.jpg';
-// ✅ useAuth ঠিক আছে
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
-// USER_ROLES ইমপোর্ট করা আছে, কিন্তু এখন আর isAdmin ম্যানুয়ালি চেক করার দরকার নেই
 
-// --- Global Nav Links Data (অপরিবর্তিত) ---
+/**
+ * @BACKEND_TEAM_NOTE:
+ * ১. RBAC (Role-Based Access Control): 'isAdmin' ফ্ল্যাগটি 'AuthContext' থেকে আসছে।
+ * ব্যাকএন্ড থেকে ইউজার অবজেক্টে 'role' প্রপার্টি নিশ্চিত করতে হবে (e.g., role: 'admin' or 'member')।
+ * ২. Navigation Config: ভবিষ্যতে মেনু আইটেমগুলো ব্যাকএন্ড থেকে ডাইনামিকালি পাঠানো হলে (GET /api/navigation)
+ * এই হার্ডকোডেড 'navLinks' অ্যারেটি রিপ্লেস করা যাবে।
+ */
+
 const baseNavLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Our Members', path: '/members', icon: Users },
@@ -25,23 +30,17 @@ const baseNavLinks = [
     { name: 'Tasks', path: '/tasks', icon: ListTodo }
 ];
 
-// NavItem কম্পোনেন্ট (অপরিবর্তিত - এটি আগের মতোই isAdmin prop ব্যবহার করবে)
 function NavItem({ link, isAdmin, closeSidebar }) {
     const location = useLocation();
-
     const isActive = location.pathname.startsWith(link.path);
+
     const classes = isActive
         ? 'bg-indigo-600 text-white shadow-lg'
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 
-    // যদি লিঙ্কটি Admin অ্যাক্সেস দাবি করে এবং ইউজার Admin না হয়, তবে লিঙ্কটি রেন্ডার হবে না
-    if (link.requiresAdmin && !isAdmin) {
-        return null;
-    }
-    // যদি লিঙ্কটি Admin না হয় এবং ইউজার Admin হয়, তবে লিঙ্কটি রেন্ডার হবে না
-    if (link.requiresNonAdmin && isAdmin) {
-        return null;
-    }
+    // @BACKEND_LOGIC: নির্দিষ্ট রাউটের জন্য ব্যাকএন্ড পারমিশন চেক করা থাকলে এখানে আরও কন্ডিশন যোগ করা যাবে।
+    if (link.requiresAdmin && !isAdmin) return null;
+    if (link.requiresNonAdmin && isAdmin) return null;
 
     return (
         <Link
@@ -55,17 +54,11 @@ function NavItem({ link, isAdmin, closeSidebar }) {
     );
 }
 
-// --- Sidebar কম্পোনেন্ট (পরিবর্তিত) ---
 function Sidebar() {
-    // ✅ FIX: user-এর পরিবর্তে সরাসরি isAdmin এবং loading prop ব্যবহার করা হলো
+    // AuthContext থেকে সরাসরি স্টেট নেওয়া হচ্ছে যা এপিআই রেসপন্সের ওপর নির্ভরশীল
     const { isAdmin, loading } = useAuth();
     const { isSidebarOpen, closeSidebar } = useSidebar();
 
-    // ❌ এই লাইনটি মুছে দেওয়া হলো, কারণ isAdmin এখন সরাসরি useAuth থেকে আসছে
-    // const isAdmin = user?.role === USER_ROLES.ADMIN;
-
-    // নতুন নেভিগেশন লিঙ্ক ডেটা
-    // isAdmin সরাসরি ব্যবহার করা হচ্ছে, যা AuthContext থেকে আসছে।
     const navLinks = [
         ...baseNavLinks,
         isAdmin
@@ -73,52 +66,53 @@ function Sidebar() {
             : { name: 'Team Members', path: '/team', icon: Users, requiresNonAdmin: true }
     ];
 
-    // Auth ডেটা লোড না হওয়া পর্যন্ত অপেক্ষা করুন
+    /**
+     * @BACKEND_INTEGRATION:
+     * এপিআই থেকে ইউজার ডাটা ফেচ করার সময় 'loading' ট্রু থাকবে।
+     * এটি নিশ্চিত করে যে ভুল রোল (Role) নিয়ে মেনু রেন্ডার হবে না।
+     */
     if (loading) {
-        return null;
+        return (
+            <div className="hidden lg:flex w-64 bg-white border-r border-gray-200 animate-pulse" />
+        );
     }
 
     return (
         <>
-            {/* Backdrop এবং Sidebar-এর অন্যান্য অংশ অপরিবর্তিত থাকবে */}
             <div
                 className={`fixed inset-y-0 left-0 z-50 transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                         transition-transform duration-300 ease-in-out lg:static lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 shadow-xl lg:shadow-none`}
             >
-                {/* Header / Close Button for Mobile */}
-                <div className="flex items-center justify-between border-b border-gray-200 lg:justify-center">
+                <div className="flex items-center justify-between border-b border-gray-200 lg:justify-center p-2">
                     <div className="flex items-center">
                         <img
                             src={TaskMasterLogo}
                             alt="TaskMaster Logo"
-                            className="h-20 w-20 rounded-full"
+                            className="h-16 w-16 rounded-full object-cover"
                         />
-                        <h1 className="text-2xl font-bold text-indigo-700">TaskMaster</h1>
-                    </div>{' '}
+                        <h1 className="text-xl font-bold text-indigo-700 ml-2">TaskMaster</h1>
+                    </div>
                     <button
                         type="button"
                         onClick={closeSidebar}
-                        className="text-gray-500 lg:hidden hover:text-red-600"
+                        className="text-gray-500 lg:hidden p-2"
                         aria-label="Close Menu"
                     >
-                        <X className="h-10 w-10 pr-4" />
+                        <X className="h-8 w-8" />
                     </button>
                 </div>
 
-                {/* Navigation Links (মেইন চেঞ্জ এখানে) */}
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    {/* এখন navLinks অ্যারেতে শুধুমাত্র সেই লিঙ্কটি থাকবে যা ইউজারের জন্য প্রয়োজন */}
                     {navLinks.map((link) => (
                         <NavItem
                             key={link.name}
                             link={link}
-                            isAdmin={isAdmin} // ✅ isAdmin Prop সরাসরি useAuth থেকে আসছে
+                            isAdmin={isAdmin}
                             closeSidebar={closeSidebar}
                         />
                     ))}
                 </nav>
 
-                {/* Footer / Settings Link */}
                 <div className="p-4 border-t border-gray-200">
                     <Link
                         to="/settings"
@@ -134,10 +128,9 @@ function Sidebar() {
                 </div>
             </div>
 
-            {/* Mobile Backdrop (Outside click to close) */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 z-40 bg-black opacity-50 lg:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
                     onClick={closeSidebar}
                     aria-hidden="true"
                 />

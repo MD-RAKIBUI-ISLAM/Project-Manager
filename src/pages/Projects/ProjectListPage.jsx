@@ -16,6 +16,11 @@ import {
 } from '../../utils/constants';
 
 // ধাপ ১: মেম্বার লিস্ট থেকে আইডি-টু-নেম ম্যাপ তৈরি করা
+/**
+ * @BACKEND_TEAM_NOTE:
+ * ইউজার ডেটা বর্তমানে লোকাল মক ফাইল থেকে আসছে। ইন্টিগ্রেশনের সময় ইউজারদের
+ * লিস্ট পাওয়ার জন্য একটি ডেডিকেটেড এন্ডপয়েন্ট (GET /api/users) লাগবে।
+ */
 const userMap = mockProjectMembers.reduce((acc, user) => {
     // আইডিকে স্ট্রিং এ কনভার্ট করা হচ্ছে যেন সকল ক্ষেত্রে সামঞ্জস্য থাকে
     acc[String(user.id)] = user.name;
@@ -39,6 +44,12 @@ function ProjectListPage() {
 
     // FR-5 & FR-7: New Project Save/Edit Handler
     const handleSaveProject = (projectData, isEditing) => {
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * - isEditing === true হলে: PUT/PATCH `/api/projects/${projectData.id}`
+         * - isEditing === false হলে: POST `/api/projects`
+         * সার্ভার সাইড ভ্যালিডেশন নিশ্চিত করুন যাতে শুধুমাত্র Admin/PM প্রজেক্ট তৈরি/এডিট করতে পারে।
+         */
         if (isEditing) {
             // Edit Logic (FR-7)
             setProjects((prevProjects) =>
@@ -72,6 +83,11 @@ function ProjectListPage() {
 
     // ✅ handler: Delete Project Handler
     const handleDeleteProject = (projectId) => {
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * DELETE `/api/projects/${projectId}` কল করতে হবে।
+         * ডিলিট করার আগে সংশ্লিষ্ট টাস্ক এবং ফাইলগুলোর ম্যানেজমেন্ট পলিসি ঠিক করতে হবে।
+         */
         console.warn(
             'Deletion attempted. A custom modal is required before permanent deletion. Simulating confirmation...'
         );
@@ -82,6 +98,12 @@ function ProjectListPage() {
 
     // FR-8 & Filtering Logic: useMemo আপডেট করা হলো (রোল-ভিত্তিক অ্যাক্সেস কন্ট্রোল যুক্ত)
     const filteredAndSearchedProjects = useMemo(() => {
+        /**
+         * @BACKEND_TEAM_NOTE:
+         * সিকিউরিটির জন্য প্রজেক্ট লিস্ট ফিল্টারিং ব্যাকএন্ড (GET /api/projects) থেকে হওয়া উচিত।
+         * বিশেষ করে সাধারণ ইউজার যেন API কল করে অন্যের প্রজেক্টের ডেটা না পায় তা নিশ্চিত করতে হবে।
+         * এখানে ব্যবহৃত লজিকটি (Role-based access) ব্যাকএন্ড কুয়েরিতে ইমপ্লিমেন্ট করুন।
+         */
         const currentUserId = String(user?.id);
         const userRole = user?.role;
 

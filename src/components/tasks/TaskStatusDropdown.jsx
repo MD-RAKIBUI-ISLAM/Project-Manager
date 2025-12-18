@@ -3,6 +3,15 @@ import { useState } from 'react';
 
 import { TASK_STATUSES } from '../../utils/constants';
 
+/**
+ * @BACKEND_TEAM_NOTE:
+ * ১. API Endpoint: এই ড্রপডাউন থেকে স্ট্যাটাস পরিবর্তন করলে সাধারণত 'PATCH /api/tasks/{taskId}'
+ * এন্ডপয়েন্টে রিকোয়েস্ট পাঠাতে হবে।
+ * ২. Payload: রিকোয়েস্ট বডিতে শুধুমাত্র `{ status: newStatusValue }` পাঠালেই চলবে।
+ * ৩. Transition Validation: ব্যাকএন্ডে চেক করা উচিত যে নির্দিষ্ট ইউজার স্ট্যাটাস পরিবর্তনের
+ * পারমিশন রাখে কি না (যেমন: শুধু Admin বা Assigned User পরিবর্তন করতে পারবে)।
+ */
+
 // স্ট্যাটাসের রঙ এবং আইকন ম্যাপ
 const statusStyles = {
     back_log: { icon: Clock, color: 'text-gray-600 bg-gray-100', dot: 'bg-gray-500' },
@@ -18,6 +27,10 @@ function TaskStatusDropdown({ currentStatus, taskId, onStatusChange }) {
     const Icon = statusInfo.icon;
 
     const handleSelectStatus = (newStatusValue) => {
+        /**
+         * @BACKEND_NOTE:
+         * onStatusChange কল হওয়ার সাথে সাথে ব্যাকএন্ডে আপডেট রিকোয়েস্ট ট্রিগার হওয়া উচিত।
+         */
         onStatusChange(taskId, newStatusValue);
         setIsOpen(false);
     };

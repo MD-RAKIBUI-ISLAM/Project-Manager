@@ -7,6 +7,14 @@ import { INITIAL_PROJECTS, mockProjectMembers, TASK_PRIORITIES } from '../../uti
 import Button from '../common/Button';
 
 /**
+ * @BACKEND_TEAM_NOTE:
+ * ১. POST/PUT Payload: এই ফর্ম থেকে ডাটা পাঠানোর সময় 'assigneeId' এবং 'projectId'
+ * ইন্টিজার (Integer) হিসেবে ডাটাবেজে পাঠাতে হবে।
+ * ২. Validation: ব্যাকএন্ডে অবশ্যই 'title', 'dueDate', 'assigneeId', এবং 'projectId'
+ * রিকোয়ার্ড (Required) হিসেবে চেক করতে হবে।
+ */
+
+/**
  * Task Modal Component (FR-11)
  * Used for creating new tasks or editing existing tasks.
  *
@@ -29,6 +37,7 @@ function TaskModal({
     // Default values
     const defaultPriority = TASK_PRIORITIES[0]?.value || 'medium';
     const defaultAssigneeId = projectMembers[0]?.id || '';
+
     // ✅ Change 1: Set default project ID
     const defaultProjectId = availableProjects[0]?.id || '';
 
@@ -38,6 +47,7 @@ function TaskModal({
     const [priority, setPriority] = useState(task?.priority || defaultPriority);
     const [dueDate, setDueDate] = useState(task?.dueDate || '');
     const [assignedUser, setAssignedUser] = useState(task?.assigneeId || defaultAssigneeId);
+
     // ✅ Change 2: Project ID state যোগ করা হলো
     const [projectId, setProjectId] = useState(task?.projectId || defaultProjectId);
 

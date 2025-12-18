@@ -5,6 +5,15 @@ import React from 'react';
 import { classNames } from '../../utils/helpers';
 
 /**
+ * @BACKEND_TEAM_NOTE:
+ * ১. Data Sanitization: এই ইনপুট ফিল্ড থেকে আসা ডাটা সার্ভারে সেভ করার আগে অবশ্যই
+ * ট্রিম (Trim) এবং স্যানিটাইজ করতে হবে যাতে XSS অ্যাটাক প্রতিরোধ করা যায়।
+ * ২. Error Mapping: ব্যাকএন্ড থেকে আসা ভ্যালিডেশন এররগুলো (যেমন: ৪২২ আনপ্রসেসেবল এন্টিটি)
+ * অবশ্যই এই 'error' প্রপের ফরম্যাটে পাঠাতে হবে যাতে ইউজার ফ্রন্টএন্ডে সঠিক মেসেজ দেখতে পায়।
+ * ৩. Constraint Sync: ইনপুটের 'maxlength' এবং ডাটাবেজ কলামের লেন্থ অবশ্যই একই হতে হবে।
+ */
+
+/**
  * Reusable Input Field Component, designed for use with react-hook-form.
  */
 const InputField = React.forwardRef(

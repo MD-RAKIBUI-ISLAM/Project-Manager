@@ -18,6 +18,13 @@ import TaskCard from './TaskCard';
 import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
+/**
+ * @BACKEND_TEAM_NOTE:
+ * ১. Data Fetching: পেজ লোড হওয়ার সময় 'GET /api/tasks' থেকে ডাটা আনতে হবে।
+ * ২. Role-Based Access: ইউজার যদি Admin/Manager না হয়, তবে ব্যাকএন্ড থেকে শুধুমাত্র
+ * তার assigned tasks পাঠানো নিরাপদ।
+ */
+
 function TaskBoard() {
     // ✅ পরিবর্তন: useAuth এখন AuthContext থেকে user এবং role পাচ্ছে।
     const { user, role } = useAuth();
@@ -39,6 +46,10 @@ function TaskBoard() {
 
     // টাস্ক স্ট্যাটাস পরিবর্তন হ্যান্ডলার (FR-12)
     const handleStatusChange = (taskId, newStatusValue) => {
+        /**
+         * @BACKEND_NOTE:
+         * এখানে PATCH /api/tasks/{taskId} কল করে স্ট্যাটাস আপডেট করতে হবে।
+         */
         setTasks((prevTasks) =>
             prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatusValue } : t))
         );
@@ -46,6 +57,10 @@ function TaskBoard() {
 
     // নতুন টাস্ক তৈরি বা এডিট করা ডেটা সেভ করার ফাংশন (FR-10)
     const handleSaveTask = (taskData, isEditing) => {
+        /**
+         * @BACKEND_NOTE:
+         * এডিট হলে PUT /api/tasks/{id} এবং নতুন হলে POST /api/tasks ব্যবহার করতে হবে।
+         */
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
             'Unassigned';
@@ -98,7 +113,7 @@ function TaskBoard() {
 
         // যদি Manager বা Admin না হয় (শুধু নিজেকে অ্যাসাইন করা কাজ দেখান)
         if (!isManagerOrAdmin) {
-            // currentUserId কে String() দিয়ে Task-এর assigneeId-এর সাথে মিলিয়ে তুলনা করা হলো।
+            // currentUserId কে String() দিয়ে Task-এর assigneeId-এর সাথে মিলিয়ে তুলনা করা হলো।
             const currentUserId = String(user.id);
 
             filtered = filtered.filter((t) => String(t.assigneeId) === currentUserId);

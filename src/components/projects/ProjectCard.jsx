@@ -5,13 +5,13 @@ import { Link } from 'react-router-dom'; // Used for FR-6: Navigation to Project
 
 /**
  * Renders a single project card with options for viewing details, editing, and deleting.
- * This component is responsible for displaying the Edit/Delete icons and handling navigation.
  * * @param {object} props
  * @param {object} props.project - The project data object.
+ * @param {object} props.userMap - ID to Name mapping for members.
  * @param {function} [props.onEdit] - Handler function to open the edit modal.
  * @param {function} [props.onDelete] - Handler function to delete the project.
  */
-function ProjectCard({ project, onEdit, onDelete }) {
+function ProjectCard({ project, userMap, onEdit, onDelete }) {
     // Determine the color for the status pill
     const statusColor = (status) => {
         switch (status) {
@@ -33,6 +33,15 @@ function ProjectCard({ project, onEdit, onDelete }) {
         return 'bg-yellow-500';
     };
 
+    /**
+     * @BACKEND_TEAM_NOTE:
+     * মেম্বার লিস্ট বর্তমানে ID হিসেবে আসছে। ফ্রন্টএন্ডে নাম দেখানোর জন্য userMap ব্যবহার করা হচ্ছে।
+     * ভবিষ্যতে API রেসপন্সে 'members' অ্যারের ভেতরে অবজেক্ট আকারে {id, name} পাঠালে এই ম্যাপের প্রয়োজন হবে না।
+     */
+    const memberNames = (project.members || [])
+        .map((id) => userMap[String(id)] || 'Unknown')
+        .join(', ');
+
     return (
         <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full overflow-hidden border border-gray-100">
             {/* Header and Actions */}
@@ -45,9 +54,8 @@ function ProjectCard({ project, onEdit, onDelete }) {
                     <span>{project.status}</span>
                 </span>
 
-                {/* Actions (Edit and Delete) - Shown only if handlers are provided */}
+                {/* Actions (Edit and Delete) */}
                 <div className="flex space-x-2">
-                    {/* FR-7: Edit Icon (Triggers Modal in ProjectListPage) */}
                     {onEdit && (
                         <button
                             type="button"
@@ -58,7 +66,6 @@ function ProjectCard({ project, onEdit, onDelete }) {
                             <Edit className="w-5 h-5" />
                         </button>
                     )}
-                    {/* FR-7: Delete Icon (Triggers deletion in ProjectListPage) */}
                     {onDelete && (
                         <button
                             type="button"
@@ -76,7 +83,7 @@ function ProjectCard({ project, onEdit, onDelete }) {
             <div className="flex flex-col p-5 pt-0 flex-grow">
                 {/* FR-6: Title (Link to Details Page) */}
                 <Link
-                    to={`/projects/${project.id}`} // Navigates to Project Details Page
+                    to={`/projects/${project.id}`}
                     className="text-xl font-semibold text-gray-800 hover:text-indigo-600 transition-colors duration-200 line-clamp-2 mb-2"
                     title={project.title}
                 >
@@ -92,35 +99,47 @@ function ProjectCard({ project, onEdit, onDelete }) {
                     <div className="flex items-center space-x-2">
                         <Users className="w-4 h-4 text-indigo-500" />
                         <span className="font-medium">Manager:</span>
-                        <span>{project.manager.split(' ')[0]}</span>
+                        <span>{project.manager}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-indigo-500" />
-                        <span className="font-medium">Team Members:</span>
-                        <span>
-                            {project.members.length} Team Member
-                            {project.members.length !== 1 ? 's' : ''}
-                        </span>
+
+                    {/* মেম্বারদের নাম বা সংখ্যা প্রদর্শন */}
+                    <div className="flex items-start space-x-2">
+                        <Users className="w-4 h-4 text-indigo-500 mt-0.5" />
+                        <div className="flex flex-col">
+                            <span className="font-medium">Team:</span>
+                            <span
+                                className="text-xs text-gray-500 line-clamp-1"
+                                title={memberNames}
+                            >
+                                {memberNames || 'No members assigned'}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-xs">
+
+                    <div className="flex items-center space-x-2 text-xs pt-1">
                         <Calendar className="w-4 h-4 text-gray-500" />
-                        <span className="font-medium">Start:</span>
-                        <span>{project.startDate}</span>
-                        <span className="text-gray-400">|</span>
                         <span className="font-medium">Due:</span>
-                        <span>{project.endDate}</span>
+                        <span
+                            className={
+                                new Date(project.endDate) < new Date()
+                                    ? 'text-red-500 font-bold'
+                                    : ''
+                            }
+                        >
+                            {project.endDate}
+                        </span>
                     </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div>
+                <div className="mt-auto">
                     <div className="flex justify-between text-xs font-medium text-gray-600 mb-1">
                         <span>Progress</span>
                         <span>{project.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                            className={`h-2.5 rounded-full transition-all duration-500 ${progressColor(project.progress)}`}
+                            className={`h-2 rounded-full transition-all duration-500 ${progressColor(project.progress)}`}
                             style={{ width: `${project.progress}%` }}
                         />
                     </div>

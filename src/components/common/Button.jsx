@@ -5,6 +5,14 @@ import { Loader2 } from 'lucide-react';
 import { classNames } from '../../utils/helpers';
 
 /**
+ * @BACKEND_TEAM_NOTE:
+ * ১. Loading State: এপিআই রিকোয়েস্ট (POST/PUT/DELETE) চলাকালীন 'isLoading' প্রপটি
+ * 'true' পাঠাতে হবে যাতে ইউজার একই বাটনে বারবার ক্লিক করতে না পারে (Double Submission Prevention)।
+ * ২. Error Handling: যদি এপিআই থেকে কোনো এরর আসে, তবে লোডিং বন্ধ করে বাটনটি
+ * আবার এনাবেল করতে হবে যাতে ইউজার কারেকশন করে পুনরায় ট্রাই করতে পারে।
+ */
+
+/**
  * Reusable Button Component for form submissions and actions.
  */
 function Button({
@@ -18,7 +26,7 @@ function Button({
     className = '',
     ...rest
 }) {
-    // ESLint-এর কঠোর নিয়মটি বাইপাস করার জন্য এই কমেন্ট ব্যবহার করা হয়েছে।
+    // ESLint-এর কঠোর নিয়মটি বাইপাস করার জন্য এই কমেন্ট ব্যবহার করা হয়েছে।
     /* eslint-disable react/button-has-type */
 
     const baseClasses =

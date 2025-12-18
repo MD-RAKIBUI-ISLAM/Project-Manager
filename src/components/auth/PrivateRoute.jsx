@@ -1,43 +1,52 @@
 // src/components/auth/PrivateRoute.jsx
 
-import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 
 /**
- * Role-Based Private Route Component
- * এই কম্পোনেন্টটি ইউজার লগইন করেছে কিনা এবং তার প্রয়োজনীয় রোল আছে কিনা তা পরীক্ষা করে।
- * * @param {object} props - কম্পোনেন্ট প্রপস
- * @param {React.ReactNode} props.children - রুট এর ভেতরে থাকা কম্পোনেন্ট
- * @param {string} [props.requiredRole] - এই রুটটি অ্যাক্সেস করার জন্য প্রয়োজনীয় রোল (যেমন: 'Admin')
+ * @BACKEND_TEAM_NOTE:
+ * ১. Auth Persistence: ইউজার পেজ রিফ্রেশ করলে 'AuthContext' ব্যাকএন্ডের সাথে (e.g., /api/verify-token)
+ * যোগাযোগ করে 'loading' স্টেট ম্যানেজ করবে।
+ * ২. RBAC Sync: এখানে 'user.role' স্ট্রিংটি সরাসরি চেক করা হচ্ছে। ব্যাকএন্ড রেসপন্সে
+ * রোলের নামগুলো (Admin, Member, Manager) যেন ফ্রন্টএন্ডের সাথে হুবহু মেলে তা নিশ্চিত করুন।
+ * ৩. Security: ফ্রন্টএন্ডে রুট ব্লক করা হলেও, ব্যাকএন্ড এন্ডপয়েন্টে অবশ্যই 'Role-based Middleware' থাকতে হবে।
  */
+
 function PrivateRoute({ children, requiredRole }) {
-    // AuthContext থেকে ইউজার ডেটা এবং লোডিং স্টেট অ্যাক্সেস করা
     const { user, loading } = useAuth();
     const location = useLocation();
 
-    // 1. লোডিং স্টেট হ্যান্ডল করা
+    // ১. লোডিং স্টেট হ্যান্ডল করা
+    // @BACKEND_INTEGRATION: টোকেন ভ্যালিডেশন চলাকালীন এই সেকশনটি ইউজারকে অপেক্ষা করায়।
     if (loading) {
-        // লোডিং চলাকালীন একটি ডিফল্ট লোডিং টেক্সট দেখানো
-        return <div className="p-8 text-center text-gray-500">Loading access...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center h-screen space-y-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+                <p className="text-gray-500 font-medium italic">Verifying access...</p>
+            </div>
+        );
     }
 
-    // 2. অথেন্টিকেশন চেক
-    // যদি user অবজেক্ট না থাকে (লগইন করা না থাকে), তাহলে তাকে /login পেজে পাঠিয়ে দেওয়া
+    // ২. অথেন্টিকেশন চেক
+    // @BACKEND_NOTE: যদি ব্যাকএন্ড ৪০১ (Unauthorized) রেসপন্স দেয়, তবে AuthContext ইউজারকে নাল করে দেবে।
     if (!user) {
-        // state-এ from: location যোগ করা হলো যাতে লগইনের পর ইউজার আবার এই পেজটিতে ফিরে আসতে পারে
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // 3. রোল চেক (যদি requiredRole সেট করা থাকে)
+    // ৩. রোল চেক (Role-Based Access Control)
+    /**
+     * @BACKEND_INTEGRATION:
+     * যদি ব্যাকএন্ড থেকে রোলের পরিবর্তে পারমিশন লিস্ট (e.g. ['read:users', 'write:projects']) আসে,
+     * তবে এই লজিকটি 'user.permissions.includes(requiredPermission)' এ পরিবর্তন করতে হবে।
+     */
     if (requiredRole && user.role !== requiredRole) {
-        console.warn(`Access Denied: User role is ${user.role}, required role is ${requiredRole}`);
-        // রোল না মিললে /dashboard পেজে রিডাইরেক্ট করা
+        console.warn(`Access Denied: Role ${user.role} does not meet ${requiredRole}`);
+        // অ্যাক্সেস না থাকলে আনঅথরাইজড পেজ বা ড্যাশবোর্ডে পাঠানো
         return <Navigate to="/dashboard" replace />;
     }
 
-    // 4. সব শর্ত পূরণ হলে শিশুদের (Children) রেন্ডার করা
+    // ৪. সাকসেসফুল অথেন্টিকেশন
     return children;
 }
 

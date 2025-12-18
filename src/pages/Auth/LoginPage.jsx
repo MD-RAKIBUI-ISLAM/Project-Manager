@@ -9,6 +9,15 @@ import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
 import { useAuth } from '../../context/AuthContext';
 
+/**
+ * BACKEND TEAM INTEGRATION GUIDE:
+ * 1. ENDPOINT: Use POST /api/auth/login.
+ * 2. REQUEST BODY: Ensure the server expects { name, email, password }.
+ * NOTE: Standard login usually only requires email/password, but 'name' is
+ * included here as per specific UI requirements.
+ * 3. RESPONSE: Server should return a JWT token and user object on success.
+ */
+
 // ✅ পরিবর্তন #1: Validation Schema তে তিনটি ফিল্ড যোগ করা হলো
 const loginSchema = yup.object().shape({
     name: yup.string().required('Name is required'), // নতুন: নাম
@@ -31,6 +40,7 @@ function LoginPage() {
     // ফর্ম সাবমিশন হ্যান্ডলার
     const onSubmit = async (data) => {
         // ✅ পরিবর্তন #2: login ফাংশনে name, email, এবং password তিনটিই পাস করা হলো
+        // BACKEND TEAM: Ensure the login function in AuthContext maps these to the API call.
         const result = await login(data.name, data.email, data.password);
 
         // result অবজেক্টের মধ্যে success প্রপার্টিটি চেক করা হলো
