@@ -2,9 +2,10 @@
 
 import { useNavigate } from 'react-router-dom';
 
-import { mockProjectMembers } from '../../utils/constants';
+import { mockProjectMembers } from '../../utils/constants'; // BACKEND TEAM: This should be replaced with a real API call (e.g., GET /api/users)
 
 function AllMembersView() {
+    // BACKEND TEAM: Instead of using mock data, fetch all registered users from the database.
     const allMembers = mockProjectMembers;
     const navigate = useNavigate();
 
@@ -41,11 +42,11 @@ function AllMembersView() {
                         {allMembers.map((member) => (
                             // ক্লিকেবল কার্ড
                             <div
-                                key={member.id}
+                                key={member.id} // BACKEND TEAM: Unique User ID from DB
                                 onClick={() => handleMemberClick(member.id)}
-                                onKeyDown={(event) => handleKeyDown(event, member.id)} // ✅ কিবোর্ড হ্যান্ডলার যোগ করা হলো
-                                role="button" // ✅ রোল যোগ করা হলো
-                                tabIndex={0} // ✅ কিবোর্ড নেভিগেশন সাপোর্ট যোগ করা হলো
+                                onKeyDown={(event) => handleKeyDown(event, member.id)}
+                                role="button"
+                                tabIndex={0}
                                 className="relative bg-white shadow-xl rounded-xl overflow-hidden cursor-pointer group 
                                            transform hover:shadow-2xl transition duration-300 ease-in-out"
                             >
