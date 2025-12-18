@@ -1,43 +1,31 @@
-// src/context/AuthContext.jsx (FINAL Working FIX - Role State Added & ID Generation Fixed)
-
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-// ✅ FIX: USER_ROLES আমদানি করা হলো
 import { INITIAL_MOCK_USERS, USER_ROLES } from '../utils/constants';
 
-// ✅ FIX: localStorage থেকে ইউজারদের ডেটা লোড করা হলো
+// BACKEND TEAM: All localStorage logic for 'mockUsers' should be replaced by real DB queries via API.
 const getInitialMockUsers = () => {
     const storedUsers = localStorage.getItem('mockUsers');
     if (storedUsers) {
         try {
-            // যদি localStorage এ থাকে, তবে সেটি ব্যবহার করা হবে
             return JSON.parse(storedUsers);
         } catch (e) {
             console.error('Failed to parse mockUsers from localStorage', e);
-            // ত্রুটি হলে ডিফল্ট ডেটা ব্যবহার করা হবে
             return INITIAL_MOCK_USERS;
         }
     }
-    // যদি localStorage এ না থাকে, তবে ডিফল্ট ডেটা ব্যবহার করা হবে
     return INITIAL_MOCK_USERS;
 };
-// --- END INITIAL MOCK USER DATA ---
 
-/**
- * Helper function to generate a unique ID for new mock users.
- * Finds the maximum existing ID and returns the next integer.
- */
+// BACKEND TEAM: Next ID should be handled by DB (Auto-increment or UUID).
 const getNextId = (users) => {
-    // String হিসেবে থাকা ID গুলিকেও Number এ convert করে max ID বের করা হলো
     const maxId = users.reduce((max, user) => Math.max(max, Number(user.id)), 0);
-    // সর্বোচ্চ ID-এর থেকে 1 বেশি ID রিটার্ন করা হলো
     return maxId + 1;
 };
 
 export const AuthContext = createContext();
 
-// ✅ FIX: getInitialState এ 'role' কে explicit state হিসেবে রাখা হলো
 const getInitialState = () => {
+    // BACKEND TEAM: Authenticate using JWT stored in Cookies or LocalStorage.
     const token = localStorage.getItem('access_token');
     const userString = localStorage.getItem('user');
 
@@ -51,7 +39,6 @@ const getInitialState = () => {
         }
     }
 
-    // Explicitly derive and store role
     const role = user?.role || null;
 
     return {
@@ -59,50 +46,44 @@ const getInitialState = () => {
         user,
         loading: false,
         authError: null,
-        role // <--- ADDED: role is now a top-level state
+        role
     };
 };
 
 export function AuthProvider({ children }) {
-    // 1. STATE
     const [state, setState] = useState(getInitialState);
-    // ✅ FIX: mockUsers স্টেট getInitialMockUsers থেকে ডেটা নেবে
     const [mockUsers, setMockUsers] = useState(getInitialMockUsers);
 
-    // ✅ FIX: mockUsers পরিবর্তিত হলেই localStorage এ সেভ করা হবে (Persistence)
     useEffect(() => {
         localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
     }, [mockUsers]);
 
-    // ... Stable Setters (অপরিবর্তিত) ...
     const setLoading = useCallback((val) => setState((s) => ({ ...s, loading: val })), []);
     const setAuthError = useCallback((err) => setState((s) => ({ ...s, authError: err })), []);
     const updateState = useCallback((updates) => setState((s) => ({ ...s, ...updates })), []);
 
-    // ✅ FIX: updateProfile এ 'role' কেও আপডেট করা হলো
     const updateProfile = useCallback(
         (newUserData) => {
+            // BACKEND TEAM: Sync local state with DB update (PATCH /api/users/profile)
             updateState((s) => {
                 const updatedUser = { ...s.user, ...newUserData };
                 localStorage.setItem('user', JSON.stringify(updatedUser));
                 return {
                     user: updatedUser,
-                    role: updatedUser.role // Ensure role state is updated
+                    role: updatedUser.role
                 };
             });
         },
         [updateState]
     );
 
-    // 3. CORE AUTHENTICATION FUNCTIONS
     const login = useCallback(
-        // ✅ পরিবর্তন: login ফাংশন এখন তিনটি প্যারামিটারই গ্রহণ করবে (name, email, password)
         async (name, email, password) => {
             setLoading(true);
             setAuthError(null);
+            // BACKEND TEAM: Replace with POST /api/auth/login
             await new Promise((resolve) => setTimeout(resolve, 800));
 
-            // ✅ ফিক্স: ইউজার খোঁজার লজিকটি শুধুমাত্র email এবং password মিলিয়েই কাজ করবে
             const foundUser = mockUsers.find(
                 (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
             );
@@ -111,16 +92,14 @@ export function AuthProvider({ children }) {
                 localStorage.setItem('access_token', foundUser.token);
                 localStorage.setItem('user', JSON.stringify(foundUser));
 
-                // ✅ FIX: login এ 'role' কে explicit set করা হলো
                 updateState({
                     user: foundUser,
                     isAuthenticated: true,
                     loading: false,
-                    role: foundUser.role // Explicitly set role
+                    role: foundUser.role
                 });
                 return { success: true };
             }
-            // ত্রুটির মেসেজটি আগের মতো:
             const error = 'Invalid email or password.';
             setAuthError(error);
             setLoading(false);
@@ -129,11 +108,11 @@ export function AuthProvider({ children }) {
         [setLoading, setAuthError, mockUsers, updateState]
     );
 
-    // FIX 2: register ফাংশন (সাধারণ ইউজারদের জন্য) - সফল হলে ইউজার লগইন হয়ে যায়
     const register = useCallback(
         async (name, email, password, role = USER_ROLES.MEMBER) => {
             setLoading(true);
             setAuthError(null);
+            // BACKEND TEAM: Replace with POST /api/auth/register
             await new Promise((resolve) => setTimeout(resolve, 800));
 
             const isEmailTaken = mockUsers.some(
@@ -147,9 +126,7 @@ export function AuthProvider({ children }) {
                 return { success: false, error };
             }
 
-            // ✅ ID জেনারেশন ফিক্স করা হলো
             const newId = getNextId(mockUsers);
-
             const newUser = {
                 id: newId,
                 name,
@@ -161,16 +138,14 @@ export function AuthProvider({ children }) {
 
             setMockUsers((prev) => [...prev, newUser]);
 
-            // সফল রেজিস্ট্রেশনের পর ইউজারকে লগইন করানো
             localStorage.setItem('access_token', newUser.token);
             localStorage.setItem('user', JSON.stringify(newUser));
 
-            // ✅ FIX: register এ 'role' কে explicit set করা হলো
             updateState({
                 user: newUser,
                 isAuthenticated: true,
                 loading: false,
-                role: newUser.role // Explicitly set role
+                role: newUser.role
             });
             return { success: true };
         },
@@ -178,25 +153,24 @@ export function AuthProvider({ children }) {
     );
 
     const logout = useCallback(() => {
+        // BACKEND TEAM: Potentially blacklist token on server
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
 
-        // ✅ FIX: logout এ 'role' কে null করা হলো
         setState({
             isAuthenticated: false,
             user: null,
             loading: false,
             authError: null,
-            role: null // Explicitly set role to null
+            role: null
         });
     }, [setState]);
 
-    // ------------------------------------------
-    // FIX 4: Admin-এর জন্য নতুন ইউজার তৈরির ফাংশন (Admin সেশন পরিবর্তন করবে না)
     const adminCreateUser = useCallback(
         async (name, email, password, role) => {
             setLoading(true);
             setAuthError(null);
+            // BACKEND TEAM: Replace with POST /api/admin/users
             await new Promise((resolve) => setTimeout(resolve, 800));
 
             const isEmailTaken = mockUsers.some(
@@ -208,10 +182,7 @@ export function AuthProvider({ children }) {
                 return { success: false, error: 'User with this email already exists.' };
             }
 
-            // ✅ ID জেনারেশন ফিক্স করা হলো
             const newId = getNextId(mockUsers);
-
-            // মক ইউজার লিস্টে নতুন ইউজারকে যোগ করা হলো
             const newUser = {
                 id: newId,
                 name,
@@ -222,21 +193,15 @@ export function AuthProvider({ children }) {
             };
 
             setMockUsers((prev) => [...prev, newUser]);
-
-            // Admin সেশন বজায় রাখার জন্য এখানে কোনো লগইন লজিক ব্যবহার করা হয়নি।
-
             setLoading(false);
             return { success: true, user: newUser };
         },
         [setLoading, setAuthError, mockUsers, setMockUsers]
     );
-    // ------------------------------------------
-
-    // ... (User Management Functions) ...
 
     const fetchUsers = useCallback(async () => {
+        // BACKEND TEAM: Replace with GET /api/users
         await new Promise((resolve) => setTimeout(resolve, 300));
-        // আইডিগুলিকে string এ কনভার্ট করা হয়েছে যাতে findIndex ঠিকভাবে কাজ করে
         return mockUsers.map(({ password, ...user }) => ({ ...user, id: String(user.id) }));
     }, [mockUsers]);
 
@@ -244,10 +209,10 @@ export function AuthProvider({ children }) {
         async (userId, newDetails) => {
             setLoading(true);
             setAuthError(null);
+            // BACKEND TEAM: Replace with PATCH /api/users/:id
             await new Promise((resolve) => setTimeout(resolve, 800));
 
             let updatedUser = null;
-
             setMockUsers((prevUsers) => {
                 const index = prevUsers.findIndex((u) => String(u.id) === String(userId));
                 if (index === -1) return prevUsers;
@@ -264,14 +229,12 @@ export function AuthProvider({ children }) {
             });
 
             setLoading(false);
-
             if (updatedUser) {
                 if (String(state.user?.id) === String(userId)) {
-                    updateProfile(updatedUser); // This calls the fixed updateProfile
+                    updateProfile(updatedUser);
                 }
                 return { success: true, user: updatedUser };
             }
-
             return { success: false, error: 'User not found' };
         },
         [setLoading, setAuthError, setMockUsers, state.user?.id, updateProfile]
@@ -280,38 +243,32 @@ export function AuthProvider({ children }) {
     const deleteUser = useCallback(
         async (userId) => {
             setAuthError(null);
+            // BACKEND TEAM: Replace with DELETE /api/users/:id
             await new Promise((resolve) => setTimeout(resolve, 800));
 
             setMockUsers((prevUsers) => prevUsers.filter((u) => String(u.id) !== String(userId)));
-
             setLoading(false);
             return { success: true };
         },
         [setLoading, setAuthError, setMockUsers]
     );
 
-    // 5. CONTEXT VALUE
     const authContextValue = useMemo(
         () => ({
-            ...state, // state now includes the explicit 'role'
+            ...state,
             login,
             register,
             logout,
-
-            // User Management Functions
             fetchUsers,
             updateUser,
             deleteUser,
             adminCreateUser,
-
-            // Role Checkers-এ কনস্ট্যান্ট ব্যবহার
-            isAdmin: state.role === USER_ROLES.ADMIN, // Uses state.role
-            isManager: state.role === USER_ROLES.PROJECT_MANAGER, // Uses state.role
-            // hasRole ফাংশনটি এখন contextValue-এর অংশ, যা ProjectDashboard-এ ত্রুটি দূর করবে।
+            isAdmin: state.role === USER_ROLES.ADMIN,
+            isManager: state.role === USER_ROLES.PROJECT_MANAGER,
             hasRole: (roles) => {
                 if (!state.user) return false;
                 const roleArray = Array.isArray(roles) ? roles : [roles];
-                return roleArray.includes(state.role); // Uses state.role
+                return roleArray.includes(state.role);
             }
         }),
         [state, login, register, logout, fetchUsers, updateUser, deleteUser, adminCreateUser]
