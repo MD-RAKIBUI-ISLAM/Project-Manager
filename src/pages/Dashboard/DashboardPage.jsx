@@ -3,6 +3,7 @@
 import {
     Activity,
     Briefcase,
+    Calendar,
     CheckCircle,
     ChevronDown,
     Clock,
@@ -12,7 +13,8 @@ import {
     MessageSquare,
     Search,
     Target,
-    TrendingUp
+    TrendingUp,
+    UserCircle
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -21,17 +23,25 @@ import { ALL_MOCK_TASKS, INITIAL_PROJECTS, MOCK_DASHBOARD_DATA } from '../../uti
 
 // --- Helper Components ---
 
-function MetricCard({ title, value, icon: Icon, colorClass, description }) {
+function MetricCard({ title, value, icon: Icon, colorClass, bgColor, description }) {
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md border-b-4 border-t-2 border-gray-100 transition duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-xl cursor-pointer">
-            <div className="flex items-center justify-between">
-                <span className={`p-3 rounded-full ${colorClass} bg-opacity-20 flex-shrink-0`}>
+        <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 transition-all hover:shadow-md group">
+            <div className="flex items-center justify-between mb-4">
+                <div
+                    className={`p-3 rounded-2xl ${bgColor} transition-transform group-hover:scale-110`}
+                >
                     <Icon className={`w-6 h-6 ${colorClass}`} />
-                </span>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{value}</p>
+                </div>
+                <div className="bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                    <span className="text-xl font-bold text-gray-800">{value}</span>
+                </div>
             </div>
-            <h3 className="text-xs font-semibold uppercase text-gray-500 mt-3 sm:mt-4">{title}</h3>
-            <p className="text-xs text-gray-400 mt-1 truncate">{description}</p>
+            <div>
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                    {title}
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">{description}</p>
+            </div>
         </div>
     );
 }
@@ -41,38 +51,44 @@ function ProjectProgressCard({ project }) {
         project.progress === 100
             ? 'bg-green-500'
             : project.progress > 60
-              ? 'bg-sky-500'
+              ? 'bg-indigo-500'
               : project.progress > 20
-                ? 'bg-amber-500'
-                : 'bg-red-500';
+                ? 'bg-orange-400'
+                : 'bg-rose-500';
 
     return (
-        <div className="p-4 bg-white rounded-xl border border-gray-200 hover:shadow-lg transition duration-200 cursor-pointer">
-            <div className="flex justify-between items-start mb-2">
-                <h4
-                    className="font-semibold text-gray-800 text-sm sm:text-base truncate pr-2"
-                    title={project.title}
-                >
-                    <Briefcase className="w-4 h-4 mr-1 inline text-indigo-500 flex-shrink-0" />
-                    {project.title}
-                </h4>
+        <div className="p-5 bg-white rounded-2xl border border-gray-100 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer group">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 rounded-lg group-hover:bg-indigo-100">
+                        <Briefcase className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-gray-800 text-base">{project.title}</h4>
+                        <p className="text-xs text-gray-400">
+                            Due: {project.dueDate || project.endDate}
+                        </p>
+                    </div>
+                </div>
                 <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${project.status === 'In Progress' ? 'bg-sky-100 text-sky-700' : 'bg-gray-200 text-gray-600'}`}
+                    className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${
+                        project.status === 'In Progress'
+                            ? 'bg-indigo-50 text-indigo-600'
+                            : 'bg-gray-100 text-gray-500'
+                    }`}
                 >
                     {project.status}
                 </span>
             </div>
-            <div className="text-xs text-gray-600 mb-2 flex justify-between">
-                <span>{project.progress}% Complete</span>
-                <span className="font-medium text-gray-500">
-                    Due: {project.dueDate || project.endDate}
-                </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                    className={`h-2.5 rounded-full ${progressColor}`}
-                    style={{ width: `${project.progress}%` }}
-                />
+
+            <div className="flex items-center gap-4">
+                <div className="flex-grow bg-gray-100 rounded-full h-2">
+                    <div
+                        className={`h-2 rounded-full transition-all duration-1000 ${progressColor}`}
+                        style={{ width: `${project.progress}%` }}
+                    />
+                </div>
+                <span className="text-sm font-bold text-gray-700 w-10">{project.progress}%</span>
             </div>
         </div>
     );
@@ -85,7 +101,6 @@ function ProjectDashboard() {
     const [loading, setLoading] = useState(true);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-    // ফিল্টার স্টেট
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [priorityFilter, setPriorityFilter] = useState('All');
@@ -106,27 +121,22 @@ function ProjectDashboard() {
 
     const dynamicData = useMemo(() => {
         if (!user) return null;
-
         let myProjects = INITIAL_PROJECTS.filter(
-            (proj) => proj.members.includes(user.id) || proj.managerId === user.id
+            (p) => p.members.includes(user.id) || p.managerId === user.id
         );
-        let myTasks = ALL_MOCK_TASKS.filter((task) => task.assigneeId === user.id);
+        let myTasks = ALL_MOCK_TASKS.filter((t) => t.assigneeId === user.id);
 
-        if (searchTerm) {
+        if (searchTerm)
             myProjects = myProjects.filter((p) =>
                 p.title.toLowerCase().includes(searchTerm.toLowerCase())
             );
-        }
-
         if (statusFilter !== 'All') {
             myProjects = myProjects.filter((p) => p.status === statusFilter);
             const taskMap = { Completed: 'done', 'In Progress': 'in_progress', 'To Do': 'todo' };
             myTasks = myTasks.filter((t) => t.status === taskMap[statusFilter]);
         }
-
-        if (priorityFilter !== 'All') {
+        if (priorityFilter !== 'All')
             myTasks = myTasks.filter((t) => t.priority === priorityFilter.toLowerCase());
-        }
 
         return {
             totalAssignedTasks: myTasks.length,
@@ -140,11 +150,8 @@ function ProjectDashboard() {
 
     if (authLoading || loading || !user || !dynamicData) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-50">
+            <div className="flex items-center justify-center h-screen bg-slate-50">
                 <Loader className="w-8 h-8 animate-spin text-indigo-500" />
-                <span className="ml-3 text-lg font-medium text-indigo-600">
-                    Updating Dashboard...
-                </span>
             </div>
         );
     }
@@ -155,199 +162,247 @@ function ProjectDashboard() {
             : 0;
 
     return (
-        <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans">
-            <div className="mb-6 md:mb-8">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                    Welcome, {user.name}
-                </h1>
-                <p className="text-gray-600 mt-1 text-base md:text-lg">
-                    Role:{' '}
-                    <span className="font-semibold text-indigo-600 capitalize">
-                        {user.role.replace('_', ' ')}
-                    </span>
-                </p>
-            </div>
-
-            {/* Filter Bar */}
-            <div className="mb-8 p-4 bg-white rounded-2xl shadow-xl border border-indigo-100">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="relative w-full sm:flex-grow">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search projects..."
-                            className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-indigo-500 outline-none"
-                        />
+        <div className="p-6 md:p-10 bg-[#f8fafc] min-h-screen font-sans text-slate-900">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+                <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center border-4 border-white shadow-sm">
+                        <UserCircle className="w-10 h-10 text-indigo-600" />
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className={`w-full sm:w-auto sm:min-w-[200px] p-3 rounded-xl font-semibold transition duration-300 flex items-center justify-center ${
-                            showAdvancedFilters
-                                ? 'bg-indigo-700 text-white'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        }`}
-                    >
-                        <Filter className="w-5 h-5 mr-2" />
-                        {showAdvancedFilters ? 'Hide Filters' : 'Advanced Filters'}
-                        <ChevronDown
-                            className={`w-4 h-4 ml-1 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}
-                        />
-                    </button>
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight text-slate-800">
+                            Welcome, {user.name}
+                        </h1>
+                        <p className="text-slate-500 font-medium">
+                            Role:{' '}
+                            <span className="text-indigo-600 capitalize">
+                                {user.role.replace('_', ' ')}
+                            </span>
+                        </p>
+                    </div>
                 </div>
-
-                {/* ✅ Assignee ড্রপডাউন সরিয়ে দিয়ে আপডেট করা ফিল্টার */}
-                {showAdvancedFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 outline-none"
-                        >
-                            <option value="All">Status: All</option>
-                            <option value="Completed">Completed</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="To Do">To Do</option>
-                        </select>
-
-                        <select
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm focus:ring-indigo-500 outline-none"
-                        >
-                            <option value="All">Priority: All</option>
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                        </select>
-
-                        <input
-                            type="date"
-                            className="p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm outline-none focus:ring-indigo-500"
-                        />
-                    </div>
-                )}
+                <div className="bg-white px-5 py-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-indigo-500" />
+                    <span className="font-bold text-slate-700">
+                        {new Date().toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'short',
+                            day: 'numeric'
+                        })}
+                    </span>
+                </div>
             </div>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
+            {/* Main Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-10">
                 <MetricCard
-                    title="Tasks"
+                    title="Total Tasks"
                     value={dynamicData.totalAssignedTasks}
                     icon={ListChecks}
-                    colorClass="text-indigo-600"
-                    description="Filtered tasks"
+                    colorClass="text-rose-500"
+                    bgColor="bg-rose-50"
+                    description="Assigned to you"
                 />
                 <MetricCard
                     title="Completed"
                     value={dynamicData.completedTasks}
                     icon={CheckCircle}
-                    colorClass="text-green-600"
-                    description="Tasks finished"
+                    colorClass="text-emerald-500"
+                    bgColor="bg-emerald-50"
+                    description="Finished work"
                 />
                 <MetricCard
                     title="In Progress"
                     value={dynamicData.inProgressTasks}
                     icon={Activity}
-                    colorClass="text-sky-600"
-                    description="Active now"
+                    colorClass="text-indigo-500"
+                    bgColor="bg-indigo-50"
+                    description="Current focus"
                 />
                 <MetricCard
-                    title="Rate"
+                    title="Comp. Rate"
                     value={`${completionRate}%`}
                     icon={TrendingUp}
-                    colorClass="text-purple-600"
-                    description="Efficiency"
+                    colorClass="text-amber-500"
+                    bgColor="bg-amber-50"
+                    description="Performance"
                 />
                 {hasRole(['admin', 'project_manager']) && (
                     <MetricCard
                         title="Projects"
                         value={dynamicData.activeProjects}
                         icon={Briefcase}
-                        colorClass="text-amber-600"
-                        description="Managed"
+                        colorClass="text-sky-500"
+                        bgColor="bg-sky-50"
+                        description="Managing"
                     />
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl border-l-4 border-red-500">
-                        <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center border-b pb-2">
-                            <Clock className="w-5 h-5 mr-2" /> Deadlines
-                        </h2>
-                        <p className="text-red-500 font-medium">
-                            You have{' '}
-                            <span className="font-extrabold text-2xl">
-                                {dynamicData.dueDateApproaching}
-                            </span>{' '}
-                            tasks pending.
-                        </p>
+            {/* Filter & Content Area */}
+            <div className="bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100">
+                <div className="flex flex-col md:flex-row gap-4 mb-8">
+                    <div className="relative flex-grow group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search projects..."
+                            className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400 font-medium"
+                        />
                     </div>
-
-                    <div className="bg-white p-6 rounded-2xl shadow-xl">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
-                            <Target className="w-5 h-5 mr-2 text-indigo-500" />
-                            {statusFilter === 'All' ? 'Your Projects' : `${statusFilter} Projects`}
-                        </h2>
-                        {/* ✅ এখানে গ্রিড সরিয়ে Single Column (space-y-4) করা হয়েছে */}
-                        <div className="space-y-4">
-                            {dynamicData.assignedProjects.length > 0 ? (
-                                dynamicData.assignedProjects.map((project) => (
-                                    <ProjectProgressCard key={project.id} project={project} />
-                                ))
-                            ) : (
-                                <p className="text-center text-gray-400 py-4">
-                                    No projects match your filters.
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all ${
+                            showAdvancedFilters
+                                ? 'bg-indigo-600 text-white shadow-indigo-200 shadow-lg'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        <Filter className="w-5 h-5" />
+                        Filters
+                        <ChevronDown
+                            className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}
+                        />
+                    </button>
                 </div>
 
-                {/* Right Sidebar: Comments & Activity Log */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl h-64 overflow-y-auto">
-                        <h2 className="text-xl font-bold text-red-500 mb-4 flex items-center border-b pb-2">
-                            <MessageSquare className="w-5 h-5 mr-2" /> Comments
-                        </h2>
-                        <ul className="space-y-3">
-                            {MOCK_DASHBOARD_DATA.recentComments.map((comment, index) => (
-                                <li key={index} className="text-sm border-l-2 border-red-300 pl-3">
-                                    <span className="font-semibold text-indigo-600">
-                                        {comment.user}
-                                    </span>{' '}
-                                    {comment.action}
-                                    <span className="block text-xs text-gray-400">
-                                        {comment.time}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
+                {showAdvancedFilters && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-slate-50 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-white p-3 rounded-xl border-none shadow-sm outline-none font-medium text-slate-600"
+                        >
+                            <option value="All">All Status</option>
+                            <option value="Completed">Completed</option>
+                            <option value="In Progress">In Progress</option>
+                        </select>
+                        <select
+                            value={priorityFilter}
+                            onChange={(e) => setPriorityFilter(e.target.value)}
+                            className="bg-white p-3 rounded-xl border-none shadow-sm outline-none font-medium text-slate-600"
+                        >
+                            <option value="All">All Priority</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                        <input
+                            type="date"
+                            className="bg-white p-3 rounded-xl border-none shadow-sm outline-none font-medium text-slate-600"
+                        />
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Deadlines Banner */}
+                        <div className="bg-rose-50 p-6 rounded-3xl flex items-center justify-between border border-rose-100">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-2xl shadow-sm text-rose-500">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-rose-900">
+                                        Upcoming Deadlines
+                                    </h2>
+                                    <p className="text-rose-600/80 font-medium">
+                                        You have {dynamicData.dueDateApproaching} tasks requiring
+                                        attention
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-3xl font-black text-rose-600">
+                                {dynamicData.dueDateApproaching}
+                            </span>
+                        </div>
+
+                        {/* Projects List */}
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <Target className="w-6 h-6 text-indigo-500" />
+                                    Your Projects
+                                </h2>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    {dynamicData.assignedProjects.length} Total
+                                </span>
+                            </div>
+                            <div className="space-y-4">
+                                {dynamicData.assignedProjects.length > 0 ? (
+                                    dynamicData.assignedProjects.map((project) => (
+                                        <ProjectProgressCard key={project.id} project={project} />
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                        <p className="text-slate-400 font-medium">
+                                            No projects found
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-xl h-80 overflow-y-auto">
-                        <h2 className="text-xl font-bold mb-4 flex items-center border-b pb-2 text-sky-500">
-                            <Activity className="w-5 h-5 mr-2" /> Activity Log
-                        </h2>
-                        <ul className="space-y-4">
-                            {MOCK_DASHBOARD_DATA.recentActivities.map((activity, index) => (
-                                <li key={index} className="flex items-start text-sm">
-                                    <span className="w-2 h-2 mt-2 mr-3 rounded-full bg-sky-400 shrink-0" />
-                                    <div>
-                                        <span className="font-semibold text-indigo-600">
-                                            {activity.user}
-                                        </span>{' '}
-                                        {activity.action}
-                                        <span className="block text-xs text-gray-400">
-                                            {activity.time}
+                    {/* Right Column: Comments & Activity Log */}
+                    <div className="space-y-8">
+                        {/* Comments Section */}
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-rose-500">
+                                <MessageSquare className="w-5 h-5" /> Recent Comments
+                            </h2>
+                            <div className="space-y-4">
+                                {MOCK_DASHBOARD_DATA.recentComments.map((comment, index) => (
+                                    <div
+                                        key={index}
+                                        className="p-3 rounded-2xl bg-slate-50 border border-slate-100"
+                                    >
+                                        <p className="text-sm text-slate-700 leading-relaxed">
+                                            <span className="font-bold text-indigo-600">
+                                                {comment.user}
+                                            </span>{' '}
+                                            {comment.action}
+                                        </p>
+                                        <span className="text-[10px] font-bold text-slate-400 block mt-1 uppercase">
+                                            {comment.time}
                                         </span>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Activity Log Section */}
+                        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200/50">
+                            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-sky-600">
+                                <Activity className="w-5 h-5" /> Activity Log
+                            </h2>
+                            <div className="space-y-6">
+                                {MOCK_DASHBOARD_DATA.recentActivities
+                                    .slice(0, 5)
+                                    .map((activity, index) => (
+                                        <div key={index} className="flex gap-4 relative">
+                                            {index !== 4 && (
+                                                <div className="absolute left-[11px] top-7 bottom-[-20px] w-[2px] bg-slate-200" />
+                                            )}
+                                            <div className="w-6 h-6 rounded-full bg-white border-4 border-sky-400 shrink-0 z-10" />
+                                            <div className="pb-2">
+                                                <p className="text-sm text-slate-700">
+                                                    <span className="font-bold text-indigo-600">
+                                                        {activity.user}
+                                                    </span>{' '}
+                                                    {activity.action}
+                                                </p>
+                                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+                                                    {activity.time}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
