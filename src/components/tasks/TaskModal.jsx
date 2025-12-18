@@ -3,27 +3,13 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
+import { useActivity } from '../../context/ActivityContext'; // ✅ লগিং এর জন্য
+import { useAuth } from '../../context/AuthContext'; // ✅ ইউজার ইনফোর জন্য
 import { INITIAL_PROJECTS, mockProjectMembers, TASK_PRIORITIES } from '../../utils/constants';
 import Button from '../common/Button';
 
 /**
- * @BACKEND_TEAM_NOTE:
- * ১. POST/PUT Payload: এই ফর্ম থেকে ডাটা পাঠানোর সময় 'assigneeId' এবং 'projectId'
- * ইন্টিজার (Integer) হিসেবে ডাটাবেজে পাঠাতে হবে।
- * ২. Validation: ব্যাকএন্ডে অবশ্যই 'title', 'dueDate', 'assigneeId', এবং 'projectId'
- * রিকোয়ার্ড (Required) হিসেবে চেক করতে হবে।
- */
-
-/**
  * Task Modal Component (FR-11)
- * Used for creating new tasks or editing existing tasks.
- *
- * @param {object} props - Component props
- * @param {object|null} props.task - The task object for editing, or null for creation.
- * @param {function} props.onClose - Handler to close the modal.
- * @param {function} props.onSave - Handler to save the task data.
- * @param {Array} props.projectMembers - List of users who can be assigned the task.
- * @param {Array} props.availableProjects - List of available projects. (NEW)
  */
 function TaskModal({
     task,
@@ -33,38 +19,33 @@ function TaskModal({
     availableProjects = INITIAL_PROJECTS
 }) {
     const isEditing = !!task;
+    const { user } = useAuth(); // বর্তমানে লগইন থাকা ইউজার
+    const { logActivity } = useActivity(); // লগ ফাংশন
 
     // Default values
     const defaultPriority = TASK_PRIORITIES[0]?.value || 'medium';
     const defaultAssigneeId = projectMembers[0]?.id || '';
-
-    // ✅ Change 1: Set default project ID
     const defaultProjectId = availableProjects[0]?.id || '';
 
-    // Form States - task থাকলে সেই ডেটা দিয়ে ইনিশিয়ালাইজ করা
+    // Form States
     const [title, setTitle] = useState(task?.title || '');
     const [description, setDescription] = useState(task?.description || '');
     const [priority, setPriority] = useState(task?.priority || defaultPriority);
     const [dueDate, setDueDate] = useState(task?.dueDate || '');
     const [assignedUser, setAssignedUser] = useState(task?.assigneeId || defaultAssigneeId);
-
-    // ✅ Change 2: Project ID state যোগ করা হলো
     const [projectId, setProjectId] = useState(task?.projectId || defaultProjectId);
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // ✅ Change 3: Project ID validation যোগ করা হলো
         if (!title || !priority || !assignedUser || !dueDate || !projectId) {
             alert('Title, Priority, Assignee, Due Date, and Project are required.');
             return;
         }
 
-        // Assumes assignedUser is the ID (number)
         const assigneeName =
             projectMembers.find((m) => m.id === Number(assignedUser))?.name || 'Unassigned';
 
-        // ✅ Change 4: Project Name খুঁজে বের করা হলো (ProjectListPage-এর ডেটা অনুযায়ী 'title' ব্যবহার করা হলো)
         const projectName =
             availableProjects.find((p) => p.id === Number(projectId))?.title || 'Unknown Project';
 
@@ -75,79 +56,83 @@ function TaskModal({
             dueDate,
             assigneeId: Number(assignedUser),
             assignee: assigneeName,
-            // ✅ Change 5: Project ID and Name যোগ করা হলো
             projectId: Number(projectId),
             projectName
         };
 
-        // If Editing, include the task ID and existing status
         if (isEditing) {
             taskData.id = task.id;
             taskData.status = task.status;
         }
 
+        // --- ✅ অ্যাক্টিভিটি লগ যোগ করা হচ্ছে ---
+        const actionMessage = isEditing ? 'updated the task' : 'created a new task';
+        logActivity(user?.name || 'Unknown User', actionMessage, title);
+        // --------------------------------------
+
         onSave(taskData, isEditing);
     };
 
     return (
-        // Modal Overlay (FR-11)
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-lg transform transition-all">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-lg transform transition-all border border-gray-100">
                 {/* Header */}
-                <div className="flex justify-between items-center border-b pb-3 mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
+                    <h2 className="text-xl font-bold text-gray-800">
                         {isEditing ? 'Edit Task' : 'Create New Task'}
                     </h2>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-gray-500 hover:text-red-500 p-1"
+                        className="text-gray-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition-colors"
                     >
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Title */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                            Title <span className="text-red-500">*</span>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">
+                            Title <span className="text-rose-500">*</span>
                         </label>
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
-                            className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                            placeholder="What needs to be done?"
+                            className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm"
                         />
                     </div>
+
                     {/* Description */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-bold text-gray-700 mb-1">
                             Description
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            rows="3"
-                            className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                            rows="2"
+                            placeholder="Add some details..."
+                            className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* ✅ Change 6: Project Selection (New Field) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Project Selection */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Project <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">
+                                Project <span className="text-rose-500">*</span>
                             </label>
                             <select
                                 value={projectId}
                                 onChange={(e) => setProjectId(e.target.value)}
                                 required
-                                className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                                className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer"
                             >
-                                {/* if there is no default project, show a disabled option */}
                                 {!projectId && (
                                     <option value="" disabled>
                                         Select Project
@@ -155,22 +140,21 @@ function TaskModal({
                                 )}
                                 {availableProjects.map((project) => (
                                     <option key={project.id} value={project.id}>
-                                        {project.title}{' '}
-                                        {/* Use project.title based on ProjectListPage.jsx */}
+                                        {project.title}
                                     </option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Priority (FR-15) */}
+                        {/* Priority */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Priority <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">
+                                Priority <span className="text-rose-500">*</span>
                             </label>
                             <select
                                 value={priority}
                                 onChange={(e) => setPriority(e.target.value)}
-                                className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                                className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer"
                             >
                                 {TASK_PRIORITIES.map((p) => (
                                     <option key={p.value} value={p.value}>
@@ -181,31 +165,31 @@ function TaskModal({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Due Date (FR-10) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Due Date */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Due Date <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">
+                                Due Date <span className="text-rose-500">*</span>
                             </label>
                             <input
                                 type="date"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
                                 required
-                                className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                                className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none shadow-sm"
                             />
                         </div>
 
-                        {/* Assigned User (FR-10) */}
+                        {/* Assigned User */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Assign To <span className="text-red-500">*</span>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">
+                                Assign To <span className="text-rose-500">*</span>
                             </label>
                             <select
                                 value={assignedUser}
                                 onChange={(e) => setAssignedUser(e.target.value)}
                                 required
-                                className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                                className="w-full border border-gray-200 rounded-2xl p-3 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none bg-white cursor-pointer"
                             >
                                 {projectMembers.map((member) => (
                                     <option key={member.id} value={member.id}>
@@ -216,11 +200,21 @@ function TaskModal({
                         </div>
                     </div>
 
-                    <div className="flex justify-end space-x-3 pt-4">
-                        <Button type="button" variant="secondary" onClick={onClose}>
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-50">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={onClose}
+                            className="rounded-2xl py-3 order-2 sm:order-1"
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" variant="primary">
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            className="rounded-2xl py-3 shadow-lg shadow-indigo-200 order-1 sm:order-2"
+                        >
                             {isEditing ? 'Save Changes' : 'Create Task'}
                         </Button>
                     </div>

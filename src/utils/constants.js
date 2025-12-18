@@ -33,10 +33,6 @@ export const MOCK_DASHBOARD_DATA = {
         { id: 2, user: 'You', action: 'added 3 new tasks to TaskMaster Core', time: '1h ago' },
         { id: 3, user: 'Eve A.', action: 'commented on Task #104', time: '3h ago' }
     ],
-    recentComments: [
-        { id: 1, user: 'Bob J.', action: 'Commented on Task #301', time: '10m ago' },
-        { id: 2, user: 'You', action: 'Mentioned @Alice in Task #201', time: '4h ago' }
-    ],
     assignedProjects: [
         {
             id: 1,

@@ -4,10 +4,12 @@ import PrivateRoute from './components/auth/PrivateRoute';
 // Component Imports
 import AppLayout from './components/layout/AppLayout';
 import TaskBoard from './components/tasks/TaskBoard';
+import { ActivityProvider } from './context/ActivityContext';
 // Context Imports
 import { AuthProvider } from './context/AuthContext';
-import { RoleProvider } from './context/RoleContext';
 // Page Imports
+import { CommentProvider } from './context/CommentContext';
+import { RoleProvider } from './context/RoleContext';
 import UserManagementPage from './pages/Admin/UserManagementPage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -25,49 +27,56 @@ function App() {
     return (
         <AuthProvider>
             <RoleProvider>
-                <Routes>
-                    {/* --- 1. Public Routes --- */}
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <ActivityProvider>
+                    <CommentProvider>
+                        <Routes>
+                            {/* --- 1. Public Routes --- */}
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/register" element={<RegisterPage />} />
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                    {/* --- 2. General Protected Routes Wrapper (AppLayout) --- */}
-                    <Route
-                        path="/"
-                        element={
-                            <PrivateRoute>
-                                <AppLayout />
-                            </PrivateRoute>
-                        }
-                    >
-                        {/* Nested Routes inside AppLayout (Accessible by all logged-in users) */}
-                        <Route path="dashboard" element={<DashboardPage />} />
-                        <Route path="members" element={<AllMembersView />} />
-                        <Route path="tasks" element={<TaskBoard />} />
-                        <Route path="projects" element={<ProjectListPage />} />
-                        <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
-                        <Route path="notifications" element={<NotificationListPage />} />
+                            {/* --- 2. General Protected Routes Wrapper (AppLayout) --- */}
+                            <Route
+                                path="/"
+                                element={
+                                    <PrivateRoute>
+                                        <AppLayout />
+                                    </PrivateRoute>
+                                }
+                            >
+                                {/* Nested Routes inside AppLayout (Accessible by all logged-in users) */}
+                                <Route path="dashboard" element={<DashboardPage />} />
+                                <Route path="members" element={<AllMembersView />} />
+                                <Route path="tasks" element={<TaskBoard />} />
+                                <Route path="projects" element={<ProjectListPage />} />
+                                <Route
+                                    path="projects/:projectId"
+                                    element={<ProjectDetailsPage />}
+                                />
+                                <Route path="notifications" element={<NotificationListPage />} />
 
-                        {/* 👇 নতুন রুট: Team Members (সকল লগইন করা ইউজারের জন্য) */}
-                        <Route path="team" element={<TeamMembersPage />} />
+                                {/* 👇 নতুন রুট: Team Members (সকল লগইন করা ইউজারের জন্য) */}
+                                <Route path="team" element={<TeamMembersPage />} />
 
-                        {/* 🛡️ 2.1: Admin Routes (Nested, Role Check) */}
-                        <Route
-                            path="admin/users"
-                            element={
-                                <PrivateRoute requiredRole={USER_ROLES.ADMIN}>
-                                    <UserManagementPage />
-                                </PrivateRoute>
-                            }
-                        />
+                                {/* 🛡️ 2.1: Admin Routes (Nested, Role Check) */}
+                                <Route
+                                    path="admin/users"
+                                    element={
+                                        <PrivateRoute requiredRole={USER_ROLES.ADMIN}>
+                                            <UserManagementPage />
+                                        </PrivateRoute>
+                                    }
+                                />
 
-                        {/* 404 Route within the protected layout */}
-                        <Route path="*" element={<NotFound />} />
-                    </Route>
+                                {/* 404 Route within the protected layout */}
+                                <Route path="*" element={<NotFound />} />
+                            </Route>
 
-                    {/* 3. Global 404 Not Found Page (যদি কোনো রুটই না মেলে) */}
-                    <Route path="*" element={<NotFound />} />
-                </Routes>
+                            {/* 3. Global 404 Not Found Page (যদি কোনো রুটই না মেলে) */}
+                            <Route path="*" element={<NotFound />} />
+                        </Routes>
+                    </CommentProvider>
+                </ActivityProvider>
             </RoleProvider>
         </AuthProvider>
     );

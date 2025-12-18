@@ -3,7 +3,8 @@
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-// ✅ পরিবর্তন: মক useAuth সরানো হলো, আসল useAuth ইমপোর্ট করা হলো
+// ✅ Activity এবং Auth Context ইমপোর্ট করা হলো
+import { useActivity } from '../../context/ActivityContext';
 import { useAuth } from '../../context/AuthContext';
 import {
     ALL_MOCK_TASKS as initialTasks,
@@ -18,16 +19,9 @@ import TaskCard from './TaskCard';
 import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
-/**
- * @BACKEND_TEAM_NOTE:
- * ১. Data Fetching: পেজ লোড হওয়ার সময় 'GET /api/tasks' থেকে ডাটা আনতে হবে।
- * ২. Role-Based Access: ইউজার যদি Admin/Manager না হয়, তবে ব্যাকএন্ড থেকে শুধুমাত্র
- * তার assigned tasks পাঠানো নিরাপদ।
- */
-
 function TaskBoard() {
-    // ✅ পরিবর্তন: useAuth এখন AuthContext থেকে user এবং role পাচ্ছে।
     const { user, role } = useAuth();
+    const { logActivity } = useActivity(); // ✅ Activity logger initialization
 
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,32 +38,48 @@ function TaskBoard() {
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [taskForComments, setTaskForComments] = useState(null);
 
-    // টাস্ক স্ট্যাটাস পরিবর্তন হ্যান্ডলার (FR-12)
+    // ✅ ডিলিট টাস্ক হ্যান্ডলার (অ্যাক্টিভিটি লগসহ)
+    const handleDeleteTask = (taskId) => {
+        const taskToDelete = tasks.find((t) => t.id === taskId);
+        if (window.confirm(`Are you sure you want to delete "${taskToDelete?.title}"?`)) {
+            // অ্যাক্টিভিটি লগ
+            logActivity(
+                user?.name || 'User',
+                'deleted task',
+                taskToDelete?.title || 'Unknown Task'
+            );
+
+            setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        }
+    };
+
+    // টাস্ক স্ট্যাটাস পরিবর্তন হ্যান্ডলার
     const handleStatusChange = (taskId, newStatusValue) => {
-        /**
-         * @BACKEND_NOTE:
-         * এখানে PATCH /api/tasks/{taskId} কল করে স্ট্যাটাস আপডেট করতে হবে।
-         */
+        const task = tasks.find((t) => t.id === taskId);
+        const statusLabel =
+            TASK_STATUSES.find((s) => s.value === newStatusValue)?.label || newStatusValue;
+
+        // অ্যাক্টিভিটি লগ
+        logActivity(user?.name || 'User', `moved task to ${statusLabel}`, task?.title || 'Task');
+
         setTasks((prevTasks) =>
             prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatusValue } : t))
         );
     };
 
-    // নতুন টাস্ক তৈরি বা এডিট করা ডেটা সেভ করার ফাংশন (FR-10)
+    // সেভ টাস্ক হ্যান্ডলার
     const handleSaveTask = (taskData, isEditing) => {
-        /**
-         * @BACKEND_NOTE:
-         * এডিট হলে PUT /api/tasks/{id} এবং নতুন হলে POST /api/tasks ব্যবহার করতে হবে।
-         */
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
             'Unassigned';
 
         if (isEditing) {
+            logActivity(user?.name || 'User', 'updated task', taskData.title);
             setTasks((prevTasks) =>
                 prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData, assignee } : t))
             );
         } else {
+            logActivity(user?.name || 'User', 'created a new task', taskData.title);
             const newId = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) + 1 : 1;
             const newTask = {
                 ...taskData,
@@ -77,7 +87,6 @@ function TaskBoard() {
                 projectId: 1,
                 status: 'back_log',
                 assignee,
-                // assigneeId কে String হিসেবে সংরক্ষণ করা হলো, যা ফিল্টারিং লজিকের সাথে মেলে।
                 assigneeId: String(taskData.assigneeId)
             };
             setTasks((prevTasks) => [...prevTasks, newTask]);
@@ -96,9 +105,7 @@ function TaskBoard() {
         setIsCommentsOpen(true);
     };
 
-    // Filter এবং Sort করা টাস্কগুলো পেতে useMemo ব্যবহার করা হলো
     const filteredAndSortedTasks = useMemo(() => {
-        // user বা role না থাকলে, কোনো রোল-ভিত্তিক ফিল্টারিং হবে না, সব টাস্ক দেখাবে।
         if (!user || !role) {
             return tasks.sort((a, b) => {
                 if (filters.sortBy === 'dueDate') return new Date(a.dueDate) - new Date(b.dueDate);
@@ -107,25 +114,17 @@ function TaskBoard() {
         }
 
         let filtered = tasks;
-
-        // --- রোল-ভিত্তিক ফিল্টারিং লজিক ---
         const isManagerOrAdmin = role === USER_ROLES.ADMIN || role === USER_ROLES.PROJECT_MANAGER;
 
-        // যদি Manager বা Admin না হয় (শুধু নিজেকে অ্যাসাইন করা কাজ দেখান)
         if (!isManagerOrAdmin) {
-            // currentUserId কে String() দিয়ে Task-এর assigneeId-এর সাথে মিলিয়ে তুলনা করা হলো।
             const currentUserId = String(user.id);
-
             filtered = filtered.filter((t) => String(t.assigneeId) === currentUserId);
         }
-        // --- শেষ রোল-ভিত্তিক ফিল্টারিং লজিক ---
 
-        // Filtering Logic (Existing Logic)
         if (filters.priority) {
             filtered = filtered.filter((t) => t.priority === filters.priority);
         }
         if (filters.assigneeId) {
-            // assigneeId ফিল্টারটিও type-safe করা হলো (String to String)
             filtered = filtered.filter((t) => String(t.assigneeId) === String(filters.assigneeId));
         }
         if (filters.searchTerm) {
@@ -137,7 +136,6 @@ function TaskBoard() {
             );
         }
 
-        // Sorting Logic
         return filtered.sort((a, b) => {
             let comparison = 0;
             const sortOrderMultiplier = filters.sortOrder === 'desc' ? -1 : 1;
@@ -168,9 +166,8 @@ function TaskBoard() {
         filteredAndSortedTasks.filter((t) => t.status === statusValue);
 
     return (
-        <div className="py-6 flex-grow flex flex-col overflow-x-hidden">
-            {/* Header: px-6 */}
-            <div className="flex justify-between items-center border-b px-6 pb-4 mb-4 flex-shrink-0">
+        <div className="py-6 flex-grow flex flex-col overflow-x-hidden px-6">
+            <div className="flex justify-between items-center border-b pb-4 mb-4 flex-shrink-0">
                 <h1 className="text-3xl font-bold text-gray-800">Task Board (Kanban)</h1>
                 <Button
                     variant="primary"
@@ -186,8 +183,7 @@ function TaskBoard() {
                 </Button>
             </div>
 
-            {/* Filter Bar: px-6 */}
-            <div className="mb-6 flex-shrink-0 px-6">
+            <div className="mb-6 flex-shrink-0">
                 <TaskFilterSort
                     filters={filters}
                     setFilters={setFilters}
@@ -195,14 +191,12 @@ function TaskBoard() {
                 />
             </div>
 
-            {/* Kanban Board Layout */}
             <div className="flex flex-col space-y-4 pb-4 lg:flex-row lg:space-y-0 lg:space-x-2 lg:flex-grow lg:flex-nowrap">
                 {TASK_STATUSES.map((statusObject) => (
                     <div
                         key={statusObject.value}
                         className="w-full lg:flex-1 lg:flex-shrink bg-gray-100 rounded-xl shadow-md border border-gray-200 overflow-y-auto transition duration-300 hover:shadow-lg"
                     >
-                        {/* Column Header (Sticky) */}
                         <div className="sticky top-0 bg-gray-100 p-4 border-b border-gray-300 z-10 rounded-t-xl">
                             <h2
                                 className={`text-lg font-bold flex justify-between items-center ${statusObject.tailwindColor || 'text-gray-700'}`}
@@ -214,7 +208,6 @@ function TaskBoard() {
                             </h2>
                         </div>
 
-                        {/* Task List Container */}
                         <div className="p-4 space-y-4">
                             {getTasksByStatus(statusObject.value).map((task) => (
                                 <TaskCard
@@ -222,6 +215,7 @@ function TaskBoard() {
                                     task={task}
                                     onEdit={handleEditTask}
                                     onStatusChange={handleStatusChange}
+                                    onDelete={handleDeleteTask} // ✅ Delete handler পাঠানো হলো
                                     onCommentClick={handleOpenComments}
                                 />
                             ))}
@@ -235,7 +229,6 @@ function TaskBoard() {
                 ))}
             </div>
 
-            {/* Task Modal (for Create/Edit) */}
             {isModalOpen && (
                 <TaskModal
                     task={taskToEdit}
@@ -248,7 +241,6 @@ function TaskBoard() {
                 />
             )}
 
-            {/* Comment Section Component */}
             {isCommentsOpen && taskForComments && (
                 <CommentSection
                     task={taskForComments}

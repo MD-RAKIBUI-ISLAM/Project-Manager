@@ -18,8 +18,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { useActivity } from '../../context/ActivityContext'; // ✅ নতুন ইম্পোর্ট
 import { useAuth } from '../../context/AuthContext';
-import { ALL_MOCK_TASKS, INITIAL_PROJECTS, MOCK_DASHBOARD_DATA } from '../../utils/constants';
+import { useComments } from '../../context/CommentContext';
+import { ALL_MOCK_TASKS, INITIAL_PROJECTS } from '../../utils/constants';
 
 // --- Helper Components ---
 
@@ -98,9 +100,11 @@ function ProjectProgressCard({ project }) {
 
 function ProjectDashboard() {
     const { user, loading: authLoading, hasRole } = useAuth();
+    const { taskComments } = useComments();
+    const { activities } = useActivity(); // ✅ কনটেক্সট থেকে অ্যাক্টিভিটি নেয়া
+
     const [loading, setLoading] = useState(true);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [priorityFilter, setPriorityFilter] = useState('All');
@@ -119,6 +123,22 @@ function ProjectDashboard() {
         };
     }, [user]);
 
+    // কমেন্ট প্রসেসিং
+    const recentComments = useMemo(() => {
+        const allComments = [];
+        Object.entries(taskComments).forEach(([taskId, comments]) => {
+            const task = ALL_MOCK_TASKS.find((t) => t.id === parseInt(taskId, 10));
+            comments.forEach((comment) => {
+                allComments.push({
+                    ...comment,
+                    taskTitle: task ? task.title : 'Unknown Task'
+                });
+            });
+        });
+        return allComments.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
+    }, [taskComments]);
+
+    // ডাইনামিক ডেটা ক্যালকুলেশন
     const dynamicData = useMemo(() => {
         if (!user) return null;
         let myProjects = INITIAL_PROJECTS.filter(
@@ -173,7 +193,7 @@ function ProjectDashboard() {
                         <h1 className="text-3xl font-black tracking-tight text-slate-800">
                             Welcome, {user.name}
                         </h1>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-slate-500 font-medium text-sm">
                             Role:{' '}
                             <span className="text-indigo-600 capitalize">
                                 {user.role.replace('_', ' ')}
@@ -193,7 +213,7 @@ function ProjectDashboard() {
                 </div>
             </div>
 
-            {/* Main Stats Grid */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-10">
                 <MetricCard
                     title="Total Tasks"
@@ -239,8 +259,9 @@ function ProjectDashboard() {
                 )}
             </div>
 
-            {/* Filter & Content Area */}
+            {/* Main Content Area */}
             <div className="bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100">
+                {/* Search & Filters */}
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
                     <div className="relative flex-grow group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -255,14 +276,9 @@ function ProjectDashboard() {
                     <button
                         type="button"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all ${
-                            showAdvancedFilters
-                                ? 'bg-indigo-600 text-white shadow-indigo-200 shadow-lg'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all ${showAdvancedFilters ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                     >
-                        <Filter className="w-5 h-5" />
-                        Filters
+                        <Filter className="w-5 h-5" /> Filters
                         <ChevronDown
                             className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}
                         />
@@ -270,7 +286,7 @@ function ProjectDashboard() {
                 </div>
 
                 {showAdvancedFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-slate-50 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-slate-50 rounded-2xl">
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
@@ -299,7 +315,7 @@ function ProjectDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Deadlines Banner */}
+                        {/* Deadline Banner */}
                         <div className="bg-rose-50 p-6 rounded-3xl flex items-center justify-between border border-rose-100">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-2xl shadow-sm text-rose-500">
@@ -309,9 +325,8 @@ function ProjectDashboard() {
                                     <h2 className="text-lg font-bold text-rose-900">
                                         Upcoming Deadlines
                                     </h2>
-                                    <p className="text-rose-600/80 font-medium">
-                                        You have {dynamicData.dueDateApproaching} tasks requiring
-                                        attention
+                                    <p className="text-rose-600/80 font-medium text-sm">
+                                        You have {dynamicData.dueDateApproaching} pending tasks
                                     </p>
                                 </div>
                             </div>
@@ -324,83 +339,92 @@ function ProjectDashboard() {
                         <div>
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                    <Target className="w-6 h-6 text-indigo-500" />
-                                    Your Projects
+                                    <Target className="w-6 h-6 text-indigo-500" /> Your Projects
                                 </h2>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    {dynamicData.assignedProjects.length} Total
-                                </span>
                             </div>
-                            <div className="space-y-4">
-                                {dynamicData.assignedProjects.length > 0 ? (
-                                    dynamicData.assignedProjects.map((project) => (
-                                        <ProjectProgressCard key={project.id} project={project} />
-                                    ))
-                                ) : (
-                                    <div className="text-center py-10 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                        <p className="text-slate-400 font-medium">
-                                            No projects found
-                                        </p>
-                                    </div>
-                                )}
+                            <div className="grid grid-cols-1 gap-4">
+                                {dynamicData.assignedProjects.map((project) => (
+                                    <ProjectProgressCard key={project.id} project={project} />
+                                ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column: Comments & Activity Log */}
+                    {/* Side Column: Comments & Activity Log */}
                     <div className="space-y-8">
-                        {/* Comments Section */}
+                        {/* Recent Comments */}
                         <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-rose-500">
                                 <MessageSquare className="w-5 h-5" /> Recent Comments
                             </h2>
                             <div className="space-y-4">
-                                {MOCK_DASHBOARD_DATA.recentComments.map((comment, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-3 rounded-2xl bg-slate-50 border border-slate-100"
-                                    >
-                                        <p className="text-sm text-slate-700 leading-relaxed">
-                                            <span className="font-bold text-indigo-600">
-                                                {comment.user}
-                                            </span>{' '}
-                                            {comment.action}
-                                        </p>
-                                        <span className="text-[10px] font-bold text-slate-400 block mt-1 uppercase">
-                                            {comment.time}
-                                        </span>
-                                    </div>
-                                ))}
+                                {recentComments.length > 0 ? (
+                                    recentComments.map((comment) => (
+                                        <div
+                                            key={comment.id}
+                                            className="p-3 rounded-2xl bg-slate-50 border border-slate-100"
+                                        >
+                                            <p className="text-sm text-slate-700">
+                                                <span className="font-bold text-indigo-600">
+                                                    {comment.user}
+                                                </span>
+                                                : "{comment.text}"
+                                            </p>
+                                            <span className="text-[10px] font-bold text-slate-400 mt-1 block uppercase">
+                                                {new Date(comment.time).toLocaleTimeString([], {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-center text-slate-400 text-sm">
+                                        No comments
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        {/* Activity Log Section */}
-                        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200/50">
+                        {/* Activity Log (Timeline Design) */}
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-sky-600">
                                 <Activity className="w-5 h-5" /> Activity Log
                             </h2>
-                            <div className="space-y-6">
-                                {MOCK_DASHBOARD_DATA.recentActivities
-                                    .slice(0, 5)
-                                    .map((activity, index) => (
-                                        <div key={index} className="flex gap-4 relative">
-                                            {index !== 4 && (
-                                                <div className="absolute left-[11px] top-7 bottom-[-20px] w-[2px] bg-slate-200" />
-                                            )}
-                                            <div className="w-6 h-6 rounded-full bg-white border-4 border-sky-400 shrink-0 z-10" />
-                                            <div className="pb-2">
-                                                <p className="text-sm text-slate-700">
-                                                    <span className="font-bold text-indigo-600">
-                                                        {activity.user}
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                                {activities.length > 0 ? (
+                                    activities.map((log) => (
+                                        <div
+                                            key={log.id}
+                                            className="relative pl-6 pb-4 border-l-2 border-sky-100 last:border-0"
+                                        >
+                                            <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-sky-500 border-4 border-white shadow-sm" />
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                                <p className="text-xs text-slate-700 leading-snug">
+                                                    <span className="font-bold text-slate-900">
+                                                        {log.user}
                                                     </span>{' '}
-                                                    {activity.action}
+                                                    {log.action}
+                                                    {log.target && (
+                                                        <span className="font-medium text-sky-600 block">
+                                                            "{log.target}"
+                                                        </span>
+                                                    )}
                                                 </p>
-                                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-                                                    {activity.time}
+                                                <span className="text-[10px] font-bold text-slate-400 block mt-1 uppercase">
+                                                    {new Date(log.timestamp).toLocaleTimeString(
+                                                        [],
+                                                        { hour: '2-digit', minute: '2-digit' }
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>
-                                    ))}
+                                    ))
+                                ) : (
+                                    <p className="text-center text-slate-400 text-sm">
+                                        No activities yet
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
