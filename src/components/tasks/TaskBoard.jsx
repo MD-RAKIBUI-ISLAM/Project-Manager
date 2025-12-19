@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 // ✅ Activity, Auth এবং Notification Context ইমপোর্ট করা হলো
 import { useActivity } from '../../context/ActivityContext';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../context/NotificationContext'; // নতুন যোগ করা হয়েছে
+import { useNotifications } from '../../context/NotificationContext';
 import {
     ALL_MOCK_TASKS as initialTasks,
     mockProjectMembers,
@@ -64,7 +64,7 @@ function DeleteConfirmationModal({ isOpen, onConfirm, onCancel, taskTitle }) {
 function TaskBoard() {
     const { user, role } = useAuth();
     const { logActivity } = useActivity();
-    const { addNotification } = useNotifications(); // ✅ নোটিফিকেশন ফাংশন কল করা হলো
+    const { addNotification } = useNotifications();
 
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,7 +78,8 @@ function TaskBoard() {
         assigneeId: null,
         searchTerm: '',
         sortBy: 'dueDate',
-        sortOrder: 'asc'
+        sortOrder: 'asc',
+        statusFilter: 'all' // Overview ফিল্টারের জন্য নতুন স্টেট
     });
 
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -90,13 +91,10 @@ function TaskBoard() {
         setIsDeleteModalOpen(true);
     };
 
-    // ✅ ডিলিট নোটিফিকেশন ইন্টিগ্রেটেড
     const confirmDeleteTask = () => {
         if (taskToDelete) {
             const actorName = user?.name || 'User';
             logActivity(actorName, 'deleted task', taskToDelete?.title || 'Unknown Task');
-
-            // Notification
             addNotification(actorName, 'deleted task', taskToDelete?.title);
 
             setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
@@ -105,7 +103,6 @@ function TaskBoard() {
         }
     };
 
-    // ✅ স্ট্যাটাস চেঞ্জ নোটিফিকেশন ইন্টিগ্রেটেড
     const handleStatusChange = (taskId, newStatusValue) => {
         const task = tasks.find((t) => t.id === taskId);
         const statusLabel =
@@ -113,8 +110,6 @@ function TaskBoard() {
 
         const actorName = user?.name || 'User';
         logActivity(actorName, `moved task to ${statusLabel}`, task?.title || 'Task');
-
-        // Notification
         addNotification(actorName, `moved task to ${statusLabel}`, task?.title);
 
         setTasks((prevTasks) =>
@@ -122,7 +117,6 @@ function TaskBoard() {
         );
     };
 
-    // ✅ সেভ/ক্রিয়েট নোটিফিকেশন ইন্টিগ্রেটেড
     const handleSaveTask = (taskData, isEditing) => {
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
@@ -132,8 +126,6 @@ function TaskBoard() {
 
         if (isEditing) {
             logActivity(actorName, 'updated task', taskData.title);
-
-            // Notification
             addNotification(actorName, 'updated task', taskData.title);
 
             setTasks((prevTasks) =>
@@ -152,16 +144,13 @@ function TaskBoard() {
                 assigneeId: String(taskData.assigneeId)
             };
 
-            // Notification
             addNotification(actorName, 'assigned a new task', taskData.title);
-
             setTasks((prevTasks) => [...prevTasks, newTask]);
         }
         setIsModalOpen(false);
         setTaskToEdit(null);
     };
 
-    // --- বাকি লজিক এবং রেন্ডারিং সেম থাকবে (FilteredAndSorted, Render Return ইত্যাদি) ---
     const handleEditTask = (task) => {
         setTaskToEdit(task);
         setIsModalOpen(true);
@@ -173,19 +162,18 @@ function TaskBoard() {
     };
 
     const filteredAndSortedTasks = useMemo(() => {
-        if (!user || !role) {
-            return tasks.sort((a, b) => {
-                if (filters.sortBy === 'dueDate') return new Date(a.dueDate) - new Date(b.dueDate);
-                return 0;
-            });
-        }
-
         let filtered = tasks;
         const isManagerOrAdmin = role === USER_ROLES.ADMIN || role === USER_ROLES.PROJECT_MANAGER;
 
-        if (!isManagerOrAdmin) {
+        // Role based visibility
+        if (!isManagerOrAdmin && user) {
             const currentUserId = String(user.id);
             filtered = filtered.filter((t) => String(t.assigneeId) === currentUserId);
+        }
+
+        // ✅ Stats Card Filter
+        if (filters.statusFilter !== 'all') {
+            filtered = filtered.filter((t) => t.status === filters.statusFilter);
         }
 
         if (filters.priority) {
@@ -214,24 +202,92 @@ function TaskBoard() {
             } else if (filters.sortBy === 'title') {
                 comparison = a.title.localeCompare(b.title);
             } else if (filters.sortBy === 'priority') {
-                comparison = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+                comparison = (PRIORITY_ORDER[a.priority] || 0) - (PRIORITY_ORDER[b.priority] || 0);
             }
 
             return comparison * sortOrderMultiplier;
         });
     }, [tasks, filters, user, role]);
 
+    // --- Task Overview Stats Calculation ---
+    const stats = useMemo(() => {
+        // বেইজ টাস্ক (রোল অনুযায়ী ফিল্টার করা, কিন্তু স্ট্যাটাস কার্ড ফিল্টারের আগের ডেটা)
+        const baseTasks = tasks.filter((t) => {
+            if (role === USER_ROLES.ADMIN || role === USER_ROLES.PROJECT_MANAGER) return true;
+            return String(t.assigneeId) === String(user?.id);
+        });
+
+        const total = baseTasks.length;
+        const done = baseTasks.filter((t) => t.status === 'done').length;
+        const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+
+        return {
+            total,
+            backlog: baseTasks.filter((t) => t.status === 'back_log').length,
+            inProgress: baseTasks.filter((t) => t.status === 'in_progress').length,
+            done,
+            rate
+        };
+    }, [tasks, user, role]);
+
+    const statCards = [
+        {
+            id: 'all',
+            label: 'TOTAL TASKS',
+            value: stats.total,
+            color: 'bg-indigo-50',
+            textColor: 'text-indigo-700',
+            sub: 'Assigned items'
+        },
+        {
+            id: 'back_log',
+            label: 'BACKLOG',
+            value: stats.backlog,
+            color: 'bg-gray-50',
+            textColor: 'text-gray-600',
+            sub: 'Waiting to start'
+        },
+        {
+            id: 'in_progress',
+            label: 'IN PROGRESS',
+            value: stats.inProgress,
+            color: 'bg-blue-50',
+            textColor: 'text-blue-700',
+            sub: 'Current focus'
+        },
+        {
+            id: 'done',
+            label: 'COMPLETED',
+            value: stats.done,
+            color: 'bg-green-50',
+            textColor: 'text-green-700',
+            sub: 'Finished work'
+        },
+        {
+            id: 'rate',
+            label: 'COMP. RATE',
+            value: `${stats.rate}%`,
+            color: 'bg-orange-50',
+            textColor: 'text-orange-700',
+            sub: 'Performance'
+        }
+    ];
+
     const getTasksByStatus = (statusValue) =>
         filteredAndSortedTasks.filter((t) => t.status === statusValue);
 
     return (
-        <div className="py-6 flex-grow flex flex-col overflow-x-hidden px-6">
-            <div className="flex justify-between items-center border-b pb-4 mb-4 flex-shrink-0">
-                <h1 className="text-3xl font-bold text-gray-800">Task Board (Kanban)</h1>
+        <div className="py-6 flex-grow flex flex-col overflow-x-hidden px-6 bg-gray-50/30">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b pb-4 mb-6 flex-shrink-0">
+                <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+                    Task Board (Kanban)
+                </h1>
                 <Button
+                    type="button"
                     variant="primary"
                     size="md"
-                    className="space-x-2"
+                    className="space-x-2 shadow-lg shadow-indigo-100"
                     onClick={() => {
                         setTaskToEdit(null);
                         setIsModalOpen(true);
@@ -242,32 +298,81 @@ function TaskBoard() {
                 </Button>
             </div>
 
+            {/* ✅ Task Overview Section */}
+            <div className="mb-8">
+                <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
+                    Task Overview
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {statCards.map((card) => (
+                        <button
+                            key={card.id}
+                            type="button"
+                            onClick={() =>
+                                card.id !== 'rate' &&
+                                setFilters((prev) => ({ ...prev, statusFilter: card.id }))
+                            }
+                            className={`p-5 rounded-3xl border flex items-center justify-between transition-all text-left
+                                ${filters.statusFilter === card.id ? 'ring-2 ring-indigo-500 border-transparent shadow-md bg-white' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'}
+                                ${card.id === 'rate' ? 'cursor-default' : 'cursor-pointer'}`}
+                        >
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-gray-400 tracking-tighter uppercase">
+                                    {card.label}
+                                </p>
+                                <p className="text-[11px] text-gray-400 font-medium italic">
+                                    {card.id === 'rate' ? 'Success rate' : 'Click to filter'}
+                                </p>
+                            </div>
+                            <div
+                                className={`min-w-[54px] h-[54px] ${card.color} ${card.textColor} rounded-2xl flex items-center justify-center text-xl font-black shadow-inner`}
+                            >
+                                {card.value}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Filter Bar */}
             <div className="mb-6 flex-shrink-0">
                 <TaskFilterSort
                     filters={filters}
                     setFilters={setFilters}
                     assignees={mockProjectMembers}
                 />
+                {filters.statusFilter !== 'all' && (
+                    <button
+                        type="button"
+                        onClick={() => setFilters((prev) => ({ ...prev, statusFilter: 'all' }))}
+                        className="mt-2 text-xs text-indigo-600 font-bold underline px-1"
+                    >
+                        Clear status filter
+                    </button>
+                )}
             </div>
 
-            <div className="flex flex-col space-y-4 pb-4 lg:flex-row lg:space-y-0 lg:space-x-2 lg:flex-grow lg:flex-nowrap">
-                {TASK_STATUSES.map((statusObject) => (
+            {/* Kanban Columns */}
+            <div className="flex flex-col space-y-4 pb-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:flex-grow lg:flex-nowrap">
+                {TASK_STATUSES.filter(
+                    (s) => filters.statusFilter === 'all' || s.value === filters.statusFilter
+                ).map((statusObject) => (
                     <div
                         key={statusObject.value}
-                        className="w-full lg:flex-1 lg:flex-shrink bg-gray-100 rounded-xl shadow-md border border-gray-200 overflow-y-auto transition duration-300 hover:shadow-lg"
+                        className="w-full lg:flex-1 lg:flex-shrink bg-gray-100/50 rounded-3xl border border-gray-200 overflow-y-auto flex flex-col transition-all duration-300"
                     >
-                        <div className="sticky top-0 bg-gray-100 p-4 border-b border-gray-300 z-10 rounded-t-xl">
+                        <div className="sticky top-0 bg-gray-100/80 backdrop-blur-sm p-4 border-b border-gray-200 z-10">
                             <h2
-                                className={`text-lg font-bold flex justify-between items-center ${statusObject.tailwindColor || 'text-gray-700'}`}
+                                className={`text-sm font-black flex justify-between items-center uppercase tracking-widest ${statusObject.tailwindColor || 'text-gray-700'}`}
                             >
                                 <span>{statusObject.label}</span>
-                                <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                                <span className="bg-white text-gray-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-gray-200 shadow-sm">
                                     {getTasksByStatus(statusObject.value).length}
                                 </span>
                             </h2>
                         </div>
 
-                        <div className="p-4 space-y-4">
+                        <div className="p-3 space-y-3 flex-grow min-h-[150px]">
                             {getTasksByStatus(statusObject.value).map((task) => (
                                 <TaskCard
                                     key={task.id}
@@ -278,6 +383,9 @@ function TaskBoard() {
                                     onCommentClick={handleOpenComments}
                                 />
                             ))}
+                            {getTasksByStatus(statusObject.value).length === 0 && (
+                                <p className="text-center text-xs text-gray-400 mt-4">No tasks</p>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -294,7 +402,13 @@ function TaskBoard() {
             )}
 
             {isCommentsOpen && taskForComments && (
-                <CommentSection task={taskForComments} onClose={() => setIsCommentsOpen(false)} />
+                <CommentSection
+                    task={taskForComments}
+                    onClose={() => {
+                        setIsCommentsOpen(false);
+                        setTaskForComments(null);
+                    }}
+                />
             )}
 
             <DeleteConfirmationModal
