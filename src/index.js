@@ -10,7 +10,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 // NotificationProvider ডিফল্ট এক্সপোর্ট (যেমনটি আমরা তৈরি করেছিলাম)
-import NotificationProvider from './context/NotificationContext';
+import { NotificationProvider } from './context/NotificationContext';
 // ✅ FIX: SidebarProvider এখন নেমড এক্সপোর্ট হিসেবে আমদানি করা হয়েছে
 import { SidebarProvider } from './context/SidebarContext';
 

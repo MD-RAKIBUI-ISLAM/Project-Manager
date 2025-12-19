@@ -4,36 +4,19 @@ import { fetchNotifications, markAllAsRead, markAsRead } from '../api/notificati
 
 const NotificationContext = createContext();
 
-export const useNotifications = () => useContext(NotificationContext);
-
-/**
- * BACKEND TEAM INTEGRATION GUIDE:
- * 1. REAL-TIME UPDATES: Currently, notifications are fetched on mount. Consider using Socket.io or Server-Sent Events (SSE)
- * to push new notifications to the client in real-time.
- * 2. ENDPOINTS:
- * - GET /api/notifications : Fetch list of notifications for the logged-in user.
- * - PATCH /api/notifications/:id/read : Mark a specific notification as read.
- * - PATCH /api/notifications/read-all : Mark all notifications as read for the user.
- */
-
-function NotificationProvider({ children }) {
+export function NotificationProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    // নোটিফিকেশন ফেচ করার ফাংশন
+    // ১. ডাটা লোড করা (Read Action)
     const loadNotifications = useCallback(async () => {
         setLoading(true);
         try {
-            // BACKEND TEAM: Ensure this API returns an array of notification objects with an 'is_read' boolean.
             const response = await fetchNotifications();
-            const fetchedNotifications = response.data;
-
-            setNotifications(fetchedNotifications);
-
-            // Unread count গণনা
-            const count = fetchedNotifications.filter((n) => !n.is_read).length;
-            setUnreadCount(count);
+            const fetchedData = response.data || [];
+            setNotifications(fetchedData);
+            setUnreadCount(fetchedData.filter((n) => !n.is_read).length);
         } catch (error) {
             console.error('Failed to load notifications:', error);
         } finally {
@@ -41,53 +24,76 @@ function NotificationProvider({ children }) {
         }
     }, []);
 
-    // একটি নোটিফিকেশনকে 'Read' হিসেবে চিহ্নিত করা
+    // ২. লোকাল নোটিফিকেশন তৈরি (Trigger Action - For Mock/Local)
+    /**
+     * @BACKEND_TEAM_NOTE:
+     * বর্তমানে এটি ফ্রন্টএন্ডে স্টেট আপডেট করছে।
+     * রিয়েল ব্যাকএন্ড আসার পর, যখনই কোনো ইউজার কমেন্ট বা প্রজেক্ট ডিলিট করবে,
+     * সার্ভার Socket.io বা SSE এর মাধ্যমে ব্রাউজারে ডাটা পাঠাবে।
+     * তখন এই ফাংশনটি সার্ভারের পাঠানো ডাটা রিসিভ করে স্টেটে পুশ করবে।
+     */
+    const addNotification = useCallback((actor, verb, relatedObject, link = '#') => {
+        const newNotification = {
+            id: Date.now(), // ব্যাকএন্ডে এটি ডাটাবেজ আইডি হবে
+            actor,
+            verb,
+            relatedObject,
+            link,
+            timestamp: new Date().toISOString(),
+            is_read: false
+        };
+
+        setNotifications((prev) => [newNotification, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+    }, []);
+
+    // ৩. নোটিফিকেশন পড়া হিসেবে মার্ক করা
     const handleMarkAsRead = async (id) => {
         try {
-            // BACKEND TEAM: Update 'is_read' status to TRUE in the database for this specific notification ID.
-            await markAsRead(id);
-            setNotifications((prevNots) =>
-                prevNots.map((n) => (n.id === id && !n.is_read ? { ...n, is_read: true } : n))
+            await markAsRead(id); // API Call
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
             );
-            setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
+            setUnreadCount((prev) => Math.max(0, prev - 1));
         } catch (error) {
-            console.error('Failed to mark as read:', error);
+            console.error('Notification update failed:', error);
         }
     };
 
-    // সব নোটিফিকেশনকে 'Read' হিসেবে চিহ্নিত করা
+    // ৪. সব নোটিফিকেশন পড়া হিসেবে মার্ক করা
     const handleMarkAllAsRead = async () => {
         try {
-            // BACKEND TEAM: Update 'is_read' status to TRUE for all notifications belonging to the current user.
-            await markAllAsRead();
-            setNotifications((prevNots) => prevNots.map((n) => ({ ...n, is_read: true })));
+            await markAllAsRead(); // API Call
+            setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (error) {
-            console.error('Failed to mark all as read:', error);
+            console.error('Bulk update failed:', error);
         }
     };
 
     useEffect(() => {
         loadNotifications();
-        // BACKEND TEAM: If using Socket.io, initialize listener here:
-        // socket.on('new_notification', (data) => { setNotifications(prev => [data, ...prev]); });
     }, [loadNotifications]);
 
-    const contextValue = useMemo(
+    const value = useMemo(
         () => ({
             notifications,
             unreadCount,
             loading,
-            loadNotifications,
+            addNotification, // এটি ব্যবহার করে অন্য ফাইল থেকে নোটিফিকেশন পাঠানো হবে
             markAsRead: handleMarkAsRead,
             markAllAsRead: handleMarkAllAsRead
         }),
-        [notifications, unreadCount, loading, loadNotifications]
+        [notifications, unreadCount, loading, addNotification]
     );
 
-    return (
-        <NotificationContext.Provider value={contextValue}>{children}</NotificationContext.Provider>
-    );
+    return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }
 
-export default NotificationProvider;
+export const useNotifications = () => {
+    const context = useContext(NotificationContext);
+    if (!context) {
+        throw new Error('useNotifications must be used within a NotificationProvider');
+    }
+    return context;
+};
