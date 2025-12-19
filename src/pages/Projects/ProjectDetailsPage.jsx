@@ -74,8 +74,15 @@ const mapMemberData = (memberIds, membersList) =>
 const getManagerData = (managerId, membersList) => {
     const manager = membersList.find((m) => m.id === managerId);
     return manager
-        ? { id: manager.id, name: manager.name, image: manager.image } // ✅ ইমেজ ডাটা পাস করা হয়েছে
+        ? { id: manager.id, name: manager.name, image: manager.image }
         : { id: managerId, name: 'Unknown Manager' };
+};
+
+// ✅ ডাইনামিক প্রোগ্রেস ক্যালকুলেটর ফাংশন
+const calculateProgress = (projectTasks) => {
+    if (!projectTasks || projectTasks.length === 0) return 0;
+    const completedTasks = projectTasks.filter((t) => t.status === 'done').length;
+    return Math.round((completedTasks / projectTasks.length) * 100);
 };
 
 const statusStyles = {
@@ -149,19 +156,28 @@ function ProjectDetailPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState(null);
 
+    // ✅ টাস্ক সেভ বা স্ট্যাটাস চেঞ্জ হলে প্রজেক্টের প্রোগ্রেস আপডেট করার ফাংশন
+    const updateProjectProgress = (updatedTasks) => {
+        setProject((prev) => ({
+            ...prev,
+            progress: calculateProgress(updatedTasks)
+        }));
+    };
+
     const handleSaveTask = (taskData, isEditing) => {
         const currentUser = user?.name || 'Someone';
-        setTasks((prevTasks) => {
-            if (isEditing) {
-                logActivity(currentUser, 'updated task', taskData.title);
-                addNotification(
-                    currentUser,
-                    'updated the task',
-                    taskData.title,
-                    `/projects/${projectId}`
-                );
-                return prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData } : t));
-            }
+        let newTasks;
+
+        if (isEditing) {
+            logActivity(currentUser, 'updated task', taskData.title);
+            addNotification(
+                currentUser,
+                'updated the task',
+                taskData.title,
+                `/projects/${projectId}`
+            );
+            newTasks = tasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData } : t));
+        } else {
             logActivity(currentUser, 'created a new task', taskData.title);
             addNotification(
                 currentUser,
@@ -169,8 +185,11 @@ function ProjectDetailPage() {
                 taskData.title,
                 `/projects/${projectId}`
             );
-            return [...prevTasks, { ...taskData, id: Date.now(), status: 'to_do' }];
-        });
+            newTasks = [...tasks, { ...taskData, id: Date.now(), status: 'to_do' }];
+        }
+
+        setTasks(newTasks);
+        updateProjectProgress(newTasks); // প্রোগ্রেস আপডেট
         setIsTaskModalOpen(false);
         setSelectedTask(null);
     };
@@ -188,7 +207,9 @@ function ProjectDetailPage() {
             `/projects/${projectId}`
         );
 
-        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
+        const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t));
+        setTasks(updatedTasks);
+        updateProjectProgress(updatedTasks); // প্রোগ্রেস আপডেট
     };
 
     const handleOpenDeleteModal = (taskId) => {
@@ -207,7 +228,10 @@ function ProjectDetailPage() {
                 taskToDelete.title,
                 `/projects/${projectId}`
             );
-            setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+
+            const remainingTasks = tasks.filter((t) => t.id !== taskToDelete.id);
+            setTasks(remainingTasks);
+            updateProjectProgress(remainingTasks); // প্রোগ্রেস আপডেট
             setIsDeleteModalOpen(false);
             setTaskToDelete(null);
         }
@@ -222,12 +246,14 @@ function ProjectDetailPage() {
         setLoading(true);
         const rawProject = getProjectById(projectId);
         if (rawProject) {
+            const projectTasks = getTasksByProject(rawProject.tasks);
             setProject({
                 ...rawProject,
                 manager: getManagerData(rawProject.managerId, mockProjectMembers),
-                members: mapMemberData(rawProject.members, mockProjectMembers)
+                members: mapMemberData(rawProject.members, mockProjectMembers),
+                progress: calculateProgress(projectTasks) // ✅ লোড হওয়ার সময় ডাইনামিক প্রোগ্রেস সেট
             });
-            setTasks(getTasksByProject(rawProject.tasks));
+            setTasks(projectTasks);
         } else {
             setError('Project not found.');
         }
@@ -309,7 +335,6 @@ function ProjectDetailPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Project Info - Manager Pic Update ✅ */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
                             Project Info

@@ -5,7 +5,6 @@ import {
     Briefcase,
     Calendar,
     CheckCircle,
-    ChevronDown,
     Clock,
     Filter,
     ListChecks,
@@ -17,11 +16,33 @@ import {
     UserCircle
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom'; // ✅ URL সিঙ্ক করার জন্য যোগ করা হয়েছে
 
-import { useActivity } from '../../context/ActivityContext'; // ✅ নতুন ইম্পোর্ট
+import { useActivity } from '../../context/ActivityContext';
 import { useAuth } from '../../context/AuthContext';
 import { useComments } from '../../context/CommentContext';
 import { ALL_MOCK_TASKS, INITIAL_PROJECTS } from '../../utils/constants';
+
+// ✅ ১. গ্লোবাল ডাইনামিক প্রোগ্রেস ক্যালকুলেটর
+const calculateDynamicProgress = (project) => {
+    if (project.status === 'Completed' || project.status === 'Done') return 100;
+    if (!project.tasks || project.tasks.length === 0) return 0;
+
+    const projectTasks = ALL_MOCK_TASKS.filter((t) => project.tasks.includes(t.id));
+    if (projectTasks.length === 0) return 0;
+
+    const completedTasks = projectTasks.filter((t) => t.status === 'done').length;
+    return Math.round((completedTasks / projectTasks.length) * 100);
+};
+
+// ✅ ২. ডাইনামিক কালার ফাংশন
+const getProgressColor = (progress) => {
+    if (progress === 100) return 'bg-green-500';
+    if (progress >= 75) return 'bg-indigo-500';
+    if (progress >= 50) return 'bg-blue-500';
+    if (progress >= 25) return 'bg-orange-500';
+    return 'bg-red-500';
+};
 
 // --- Helper Components ---
 
@@ -49,14 +70,8 @@ function MetricCard({ title, value, icon: Icon, colorClass, bgColor, description
 }
 
 function ProjectProgressCard({ project }) {
-    const progressColor =
-        project.progress === 100
-            ? 'bg-green-500'
-            : project.progress > 60
-              ? 'bg-indigo-500'
-              : project.progress > 20
-                ? 'bg-orange-400'
-                : 'bg-rose-500';
+    const progress = calculateDynamicProgress(project);
+    const progressColor = getProgressColor(progress);
 
     return (
         <div className="p-5 bg-white rounded-2xl border border-gray-100 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer group">
@@ -87,10 +102,10 @@ function ProjectProgressCard({ project }) {
                 <div className="flex-grow bg-gray-100 rounded-full h-2">
                     <div
                         className={`h-2 rounded-full transition-all duration-1000 ${progressColor}`}
-                        style={{ width: `${project.progress}%` }}
+                        style={{ width: `${progress}%` }}
                     />
                 </div>
-                <span className="text-sm font-bold text-gray-700 w-10">{project.progress}%</span>
+                <span className="text-sm font-bold text-gray-700 w-10">{progress}%</span>
             </div>
         </div>
     );
@@ -101,46 +116,45 @@ function ProjectProgressCard({ project }) {
 function ProjectDashboard() {
     const { user, loading: authLoading, hasRole } = useAuth();
     const { taskComments } = useComments();
-    const { activities } = useActivity(); // ✅ কনটেক্সট থেকে অ্যাক্টিভিটি নেয়া
+    const { activities } = useActivity();
+
+    // ✅ URL Search Sync Logic
+    const location = useLocation();
+    const navigate = useNavigate();
+    const searchTerm = new URLSearchParams(location.search).get('q') || '';
+
+    const handleSearchChange = (e) => {
+        const { value } = e.target;
+        const params = new URLSearchParams(location.search);
+        if (value) params.set('q', value);
+        else params.delete('q');
+        navigate({ search: params.toString() }, { replace: true });
+    };
 
     const [loading, setLoading] = useState(true);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [priorityFilter, setPriorityFilter] = useState('All');
 
     useEffect(() => {
-        let isMounted = true;
-        let timer;
-        if (user) {
-            timer = setTimeout(() => {
-                if (isMounted) setLoading(false);
-            }, 800);
-        }
-        return () => {
-            isMounted = false;
-            if (timer) clearTimeout(timer);
-        };
+        const timer = setTimeout(() => setLoading(false), 800);
+        return () => clearTimeout(timer);
     }, [user]);
 
-    // কমেন্ট প্রসেসিং
     const recentComments = useMemo(() => {
         const allComments = [];
         Object.entries(taskComments).forEach(([taskId, comments]) => {
             const task = ALL_MOCK_TASKS.find((t) => t.id === parseInt(taskId, 10));
             comments.forEach((comment) => {
-                allComments.push({
-                    ...comment,
-                    taskTitle: task ? task.title : 'Unknown Task'
-                });
+                allComments.push({ ...comment, taskTitle: task ? task.title : 'Unknown Task' });
             });
         });
         return allComments.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
     }, [taskComments]);
 
-    // ডাইনামিক ডেটা ক্যালকুলেশন
     const dynamicData = useMemo(() => {
         if (!user) return null;
+
         let myProjects = INITIAL_PROJECTS.filter(
             (p) => p.members.includes(user.id) || p.managerId === user.id
         );
@@ -150,11 +164,13 @@ function ProjectDashboard() {
             myProjects = myProjects.filter((p) =>
                 p.title.toLowerCase().includes(searchTerm.toLowerCase())
             );
+
         if (statusFilter !== 'All') {
             myProjects = myProjects.filter((p) => p.status === statusFilter);
             const taskMap = { Completed: 'done', 'In Progress': 'in_progress', 'To Do': 'todo' };
             myTasks = myTasks.filter((t) => t.status === taskMap[statusFilter]);
         }
+
         if (priorityFilter !== 'All')
             myTasks = myTasks.filter((t) => t.priority === priorityFilter.toLowerCase());
 
@@ -183,7 +199,7 @@ function ProjectDashboard() {
 
     return (
         <div className="p-6 md:p-10 bg-[#f8fafc] min-h-screen font-sans text-slate-900">
-            {/* Header Section */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
                 <div className="flex items-center gap-5">
                     <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center border-4 border-white shadow-sm">
@@ -259,16 +275,15 @@ function ProjectDashboard() {
                 )}
             </div>
 
-            {/* Main Content Area */}
+            {/* Main Content */}
             <div className="bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100">
-                {/* Search & Filters */}
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
                     <div className="relative flex-grow group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                         <input
                             type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={searchTerm} // ✅ এখন এটি URL থেকে ডাটা নেয়
+                            onChange={handleSearchChange} // ✅ ইনপুট চেঞ্জ হলে URL আপডেট হবে
                             placeholder="Search projects..."
                             className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400 font-medium"
                         />
@@ -276,12 +291,9 @@ function ProjectDashboard() {
                     <button
                         type="button"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all ${showAdvancedFilters ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all ${showAdvancedFilters ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}
                     >
                         <Filter className="w-5 h-5" /> Filters
-                        <ChevronDown
-                            className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}
-                        />
                     </button>
                 </div>
 
@@ -306,16 +318,11 @@ function ProjectDashboard() {
                             <option value="Medium">Medium</option>
                             <option value="Low">Low</option>
                         </select>
-                        <input
-                            type="date"
-                            className="bg-white p-3 rounded-xl border-none shadow-sm outline-none font-medium text-slate-600"
-                        />
                     </div>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Deadline Banner */}
                         <div className="bg-rose-50 p-6 rounded-3xl flex items-center justify-between border border-rose-100">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-2xl shadow-sm text-rose-500">
@@ -335,13 +342,10 @@ function ProjectDashboard() {
                             </span>
                         </div>
 
-                        {/* Projects List */}
                         <div>
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                    <Target className="w-6 h-6 text-indigo-500" /> Your Projects
-                                </h2>
-                            </div>
+                            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 mb-6">
+                                <Target className="w-6 h-6 text-indigo-500" /> Your Projects
+                            </h2>
                             <div className="grid grid-cols-1 gap-4">
                                 {dynamicData.assignedProjects.map((project) => (
                                     <ProjectProgressCard key={project.id} project={project} />
@@ -350,81 +354,58 @@ function ProjectDashboard() {
                         </div>
                     </div>
 
-                    {/* Side Column: Comments & Activity Log */}
                     <div className="space-y-8">
-                        {/* Recent Comments */}
                         <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-rose-500">
                                 <MessageSquare className="w-5 h-5" /> Recent Comments
                             </h2>
                             <div className="space-y-4">
-                                {recentComments.length > 0 ? (
-                                    recentComments.map((comment) => (
-                                        <div
-                                            key={comment.id}
-                                            className="p-3 rounded-2xl bg-slate-50 border border-slate-100"
-                                        >
-                                            <p className="text-sm text-slate-700">
-                                                <span className="font-bold text-indigo-600">
-                                                    {comment.user}
-                                                </span>
-                                                : "{comment.text}"
-                                            </p>
-                                            <span className="text-[10px] font-bold text-slate-400 mt-1 block uppercase">
-                                                {new Date(comment.time).toLocaleTimeString([], {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
+                                {recentComments.map((comment) => (
+                                    <div
+                                        key={comment.id}
+                                        className="p-3 rounded-2xl bg-slate-50 border border-slate-100"
+                                    >
+                                        <p className="text-sm text-slate-700">
+                                            <span className="font-bold text-indigo-600">
+                                                {comment.user}
                                             </span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center text-slate-400 text-sm">
-                                        No comments
-                                    </p>
-                                )}
+                                            : "{comment.text}"
+                                        </p>
+                                        <span className="text-[10px] font-bold text-slate-400 mt-1 block uppercase">
+                                            {new Date(comment.time).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Activity Log (Timeline Design) */}
                         <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-sky-600">
                                 <Activity className="w-5 h-5" /> Activity Log
                             </h2>
-                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                                {activities.length > 0 ? (
-                                    activities.map((log) => (
-                                        <div
-                                            key={log.id}
-                                            className="relative pl-6 pb-4 border-l-2 border-sky-100 last:border-0"
-                                        >
-                                            <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-sky-500 border-4 border-white shadow-sm" />
-                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                                <p className="text-xs text-slate-700 leading-snug">
-                                                    <span className="font-bold text-slate-900">
-                                                        {log.user}
-                                                    </span>{' '}
-                                                    {log.action}
-                                                    {log.target && (
-                                                        <span className="font-medium text-sky-600 block">
-                                                            "{log.target}"
-                                                        </span>
-                                                    )}
-                                                </p>
-                                                <span className="text-[10px] font-bold text-slate-400 block mt-1 uppercase">
-                                                    {new Date(log.timestamp).toLocaleTimeString(
-                                                        [],
-                                                        { hour: '2-digit', minute: '2-digit' }
-                                                    )}
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                {activities.map((log) => (
+                                    <div
+                                        key={log.id}
+                                        className="relative pl-6 pb-4 border-l-2 border-sky-100 last:border-0"
+                                    >
+                                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-sky-500 border-4 border-white shadow-sm" />
+                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                            <p className="text-xs text-slate-700">
+                                                <span className="font-bold text-slate-900">
+                                                    {log.user}
+                                                </span>{' '}
+                                                {log.action}
+                                                <span className="font-medium text-sky-600 block">
+                                                    "{log.target}"
                                                 </span>
-                                            </div>
+                                            </p>
                                         </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center text-slate-400 text-sm">
-                                        No activities yet
-                                    </p>
-                                )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
