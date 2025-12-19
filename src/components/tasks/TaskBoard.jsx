@@ -3,9 +3,10 @@
 import { AlertTriangle, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-// ✅ Activity এবং Auth Context ইমপোর্ট করা হলো
+// ✅ Activity, Auth এবং Notification Context ইমপোর্ট করা হলো
 import { useActivity } from '../../context/ActivityContext';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext'; // নতুন যোগ করা হয়েছে
 import {
     ALL_MOCK_TASKS as initialTasks,
     mockProjectMembers,
@@ -19,7 +20,7 @@ import TaskCard from './TaskCard';
 import TaskFilterSort from './TaskFilterSortBar';
 import TaskModal from './TaskModal';
 
-// --- INLINE CONFIRMATION MODAL ---
+// --- INLINE CONFIRMATION MODAL (Design Unchanged) ---
 function DeleteConfirmationModal({ isOpen, onConfirm, onCancel, taskTitle }) {
     if (!isOpen) return null;
 
@@ -63,12 +64,12 @@ function DeleteConfirmationModal({ isOpen, onConfirm, onCancel, taskTitle }) {
 function TaskBoard() {
     const { user, role } = useAuth();
     const { logActivity } = useActivity();
+    const { addNotification } = useNotifications(); // ✅ নোটিফিকেশন ফাংশন কল করা হলো
 
     const [tasks, setTasks] = useState(initialTasks);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState(null);
 
-    // ✅ ইনলাইন কনফার্মেশনের জন্য নতুন স্টেট
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState(null);
 
@@ -83,51 +84,64 @@ function TaskBoard() {
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [taskForComments, setTaskForComments] = useState(null);
 
-    // ✅ ১. ডিলিট মোডাল ওপেন করার হ্যান্ডলার (অ্যালার্ট সরানো হয়েছে)
     const handleOpenDeleteModal = (taskId) => {
         const task = tasks.find((t) => t.id === taskId);
         setTaskToDelete(task);
         setIsDeleteModalOpen(true);
     };
 
-    // ✅ ২. আসল ডিলিট কনফার্ম করার হ্যান্ডলার
+    // ✅ ডিলিট নোটিফিকেশন ইন্টিগ্রেটেড
     const confirmDeleteTask = () => {
         if (taskToDelete) {
-            logActivity(
-                user?.name || 'User',
-                'deleted task',
-                taskToDelete?.title || 'Unknown Task'
-            );
+            const actorName = user?.name || 'User';
+            logActivity(actorName, 'deleted task', taskToDelete?.title || 'Unknown Task');
+
+            // Notification
+            addNotification(actorName, 'deleted task', taskToDelete?.title);
+
             setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
             setIsDeleteModalOpen(false);
             setTaskToDelete(null);
         }
     };
 
+    // ✅ স্ট্যাটাস চেঞ্জ নোটিফিকেশন ইন্টিগ্রেটেড
     const handleStatusChange = (taskId, newStatusValue) => {
         const task = tasks.find((t) => t.id === taskId);
         const statusLabel =
             TASK_STATUSES.find((s) => s.value === newStatusValue)?.label || newStatusValue;
 
-        logActivity(user?.name || 'User', `moved task to ${statusLabel}`, task?.title || 'Task');
+        const actorName = user?.name || 'User';
+        logActivity(actorName, `moved task to ${statusLabel}`, task?.title || 'Task');
+
+        // Notification
+        addNotification(actorName, `moved task to ${statusLabel}`, task?.title);
 
         setTasks((prevTasks) =>
             prevTasks.map((t) => (t.id === taskId ? { ...t, status: newStatusValue } : t))
         );
     };
 
+    // ✅ সেভ/ক্রিয়েট নোটিফিকেশন ইন্টিগ্রেটেড
     const handleSaveTask = (taskData, isEditing) => {
         const assignee =
             mockProjectMembers.find((m) => m.id === Number(taskData.assigneeId))?.name ||
             'Unassigned';
 
+        const actorName = user?.name || 'User';
+
         if (isEditing) {
-            logActivity(user?.name || 'User', 'updated task', taskData.title);
+            logActivity(actorName, 'updated task', taskData.title);
+
+            // Notification
+            addNotification(actorName, 'updated task', taskData.title);
+
             setTasks((prevTasks) =>
                 prevTasks.map((t) => (t.id === taskData.id ? { ...t, ...taskData, assignee } : t))
             );
         } else {
-            logActivity(user?.name || 'User', 'created a new task', taskData.title);
+            logActivity(actorName, 'created a new task', taskData.title);
+
             const newId = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) + 1 : 1;
             const newTask = {
                 ...taskData,
@@ -137,12 +151,17 @@ function TaskBoard() {
                 assignee,
                 assigneeId: String(taskData.assigneeId)
             };
+
+            // Notification
+            addNotification(actorName, 'assigned a new task', taskData.title);
+
             setTasks((prevTasks) => [...prevTasks, newTask]);
         }
         setIsModalOpen(false);
         setTaskToEdit(null);
     };
 
+    // --- বাকি লজিক এবং রেন্ডারিং সেম থাকবে (FilteredAndSorted, Render Return ইত্যাদি) ---
     const handleEditTask = (task) => {
         setTaskToEdit(task);
         setIsModalOpen(true);
@@ -189,16 +208,8 @@ function TaskBoard() {
             const sortOrderMultiplier = filters.sortOrder === 'desc' ? -1 : 1;
 
             if (filters.sortBy === 'dueDate') {
-                const dateA = a.dueDate
-                    ? new Date(a.dueDate)
-                    : filters.sortOrder === 'asc'
-                      ? new Date(8640000000000000)
-                      : new Date(-8640000000000000);
-                const dateB = b.dueDate
-                    ? new Date(b.dueDate)
-                    : filters.sortOrder === 'asc'
-                      ? new Date(8640000000000000)
-                      : new Date(-8640000000000000);
+                const dateA = a.dueDate ? new Date(a.dueDate) : new Date(8640000000000000);
+                const dateB = b.dueDate ? new Date(b.dueDate) : new Date(8640000000000000);
                 comparison = dateA - dateB;
             } else if (filters.sortBy === 'title') {
                 comparison = a.title.localeCompare(b.title);
@@ -263,52 +274,34 @@ function TaskBoard() {
                                     task={task}
                                     onEdit={handleEditTask}
                                     onStatusChange={handleStatusChange}
-                                    onDelete={handleOpenDeleteModal} // ✅ এখানে handleOpenDeleteModal দেওয়া হলো
+                                    onDelete={handleOpenDeleteModal}
                                     onCommentClick={handleOpenComments}
                                 />
                             ))}
-                            {getTasksByStatus(statusObject.value).length === 0 && (
-                                <div className="text-center text-sm text-gray-400 p-6 border-2 border-dashed border-gray-300 rounded-lg bg-white/50">
-                                    এই স্ট্যাটাসে কোনো টাস্ক নেই।
-                                </div>
-                            )}
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* --- Modals --- */}
+            {/* Modals */}
             {isModalOpen && (
                 <TaskModal
                     task={taskToEdit}
-                    onClose={() => {
-                        setIsModalOpen(false);
-                        setTaskToEdit(null);
-                    }}
+                    onClose={() => setIsModalOpen(false)}
                     onSave={handleSaveTask}
                     projectMembers={mockProjectMembers}
                 />
             )}
 
             {isCommentsOpen && taskForComments && (
-                <CommentSection
-                    task={taskForComments}
-                    onClose={() => {
-                        setIsCommentsOpen(false);
-                        setTaskForComments(null);
-                    }}
-                />
+                <CommentSection task={taskForComments} onClose={() => setIsCommentsOpen(false)} />
             )}
 
-            {/* ✅ ইনলাইন ডিলিট কনফার্মেশন মোডাল */}
             <DeleteConfirmationModal
                 isOpen={isDeleteModalOpen}
                 taskTitle={taskToDelete?.title}
                 onConfirm={confirmDeleteTask}
-                onCancel={() => {
-                    setIsDeleteModalOpen(false);
-                    setTaskToDelete(null);
-                }}
+                onCancel={() => setIsDeleteModalOpen(false)}
             />
         </div>
     );

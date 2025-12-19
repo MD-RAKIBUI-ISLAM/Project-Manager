@@ -164,7 +164,7 @@ export const mockProjectMembers = [
 export const INITIAL_PROJECTS = [
     {
         id: 1,
-        title: 'TaskMaster Core Backend',
+        title: 'TaskMaster Core Backend Development',
         description:
             'Design and implement the core Django backend, including API endpoints for Auth, Projects, and Tasks. Focus on security and performance (NFR-1, NFR-3). This is a critical infrastructure project that underpins all frontend functionality. Key deliverables include API documentation and unit test coverage.',
         startDate: '2025-12-01',
@@ -335,7 +335,7 @@ export const ALL_MOCK_TASKS = [
         id: 103,
         projectId: 1,
         title: 'Write Unit Tests for Auth',
-        status: 'to_do',
+        status: 'back_log',
         priority: 'medium',
         assignee: 'Eve Adams',
         assigneeId: 5,

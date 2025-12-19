@@ -1,35 +1,45 @@
-// src/components/tasks/CommentSection.jsx মডিফাইড ভার্সন
+// src/components/tasks/CommentSection.jsx updated with images
 
-import { Send, User, X } from 'lucide-react';
+import { Send, X } from 'lucide-react'; // User icon sorano hoyeche
 import { useState } from 'react';
 
-// 👇 আপনার তৈরি করা context ব্যবহার করা হচ্ছে
+import { useAuth } from '../../context/AuthContext';
 import { useComments } from '../../context/CommentContext';
+import { useNotifications } from '../../context/NotificationContext';
+import { mockProjectMembers } from '../../utils/constants'; // Image anar jonno import
 
 function CommentSection({ task, onClose }) {
     const taskId = task.id;
     const taskTitle = task.title;
 
-    // কনটেক্সট থেকে ডাটা এবং ফাংশন নেয়া হচ্ছে
+    const { user: currentUser } = useAuth();
     const { taskComments, addComment } = useComments();
+    const { addNotification } = useNotifications();
 
-    // নির্দিষ্ট টাস্কের জন্য কমেন্টগুলো ফিল্টার করা
     const comments = taskComments[taskId] || [];
     const [newComment, setNewComment] = useState('');
+
+    // helper function: name diye user er image khuje ber kora
+    const getUserImage = (userName) => {
+        const member = mockProjectMembers.find((m) => m.name === userName);
+        return member ? member.image : null;
+    };
 
     const handlePostComment = (e) => {
         e.preventDefault();
         if (newComment.trim() === '') return;
 
+        const actorName = currentUser?.name || 'Alice Smith';
+
         const commentToAdd = {
             id: Date.now(),
-            user: 'Alice Smith', // এটি আপনার AuthContext থেকে আসা উচিত, আপাতত মক।
+            user: actorName,
             text: newComment,
             time: new Date().toISOString()
         };
 
-        // গ্লোবাল স্টেটে ডাটা সেভ করা
         addComment(taskId, commentToAdd);
+        addNotification(actorName, 'commented on', taskTitle, `/tasks`);
         setNewComment('');
     };
 
@@ -70,27 +80,41 @@ function CommentSection({ task, onClose }) {
                                     No comments yet.
                                 </div>
                             ) : (
-                                [...comments].reverse().map((comment) => (
-                                    <div
-                                        key={comment.id}
-                                        className="p-3 bg-gray-50 rounded-lg border border-gray-100"
-                                    >
-                                        <div className="flex items-center mb-1">
-                                            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center mr-2">
-                                                <User className="w-3 h-3 text-indigo-600" />
+                                [...comments].reverse().map((comment) => {
+                                    const userImg = getUserImage(comment.user);
+                                    return (
+                                        <div
+                                            key={comment.id}
+                                            className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                                        >
+                                            <div className="flex items-center mb-1">
+                                                {/* ✅ User Image Section */}
+                                                <div className="w-7 h-7 rounded-full border border-gray-200 overflow-hidden flex-shrink-0 bg-indigo-50 flex items-center justify-center mr-2">
+                                                    {userImg ? (
+                                                        <img
+                                                            src={userImg}
+                                                            alt={comment.user}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-indigo-600">
+                                                            {comment.user?.charAt(0)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="font-semibold text-sm text-gray-800">
+                                                    {comment.user}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 ml-auto">
+                                                    {new Date(comment.time).toLocaleDateString()}
+                                                </span>
                                             </div>
-                                            <span className="font-semibold text-sm text-gray-800">
-                                                {comment.user}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400 ml-auto">
-                                                {new Date(comment.time).toLocaleDateString()}
-                                            </span>
+                                            <p className="text-sm text-gray-700 whitespace-pre-wrap pl-9">
+                                                {comment.text}
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-gray-700 whitespace-pre-wrap pl-8">
-                                            {comment.text}
-                                        </p>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
 
